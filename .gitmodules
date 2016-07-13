@@ -1,0 +1,3 @@
+[submodule "galileo"]
+	path = galileo
+	url = ./galileo

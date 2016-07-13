@@ -1,5 +1,8 @@
 package qn
 
+import breeze.stats.distributions.{ContinuousDistr, Moments}
+import qn.monitor.Monitor
+
 case class Network(name: String,
                    resources: List[Resource] = List(),
                    generators: List[OrdersStream] = List(),
@@ -9,11 +12,10 @@ case class Network(name: String,
   def add(monitor: Monitor) = Network(name, resources, generators, monitor :: monitors)
 }
 
-
-case class OrdersStream(name: String, distribution: Distribution, trajectory: Trajectory)
+case class OrdersStream(name: String, distribution: ContinuousDistr[Double] with Moments[Double, Double], trajectory: Trajectory)
 
 case class Resource(name: String, numUnits: Int, monitors: List[Monitor] = List()) {
-  def add(monitor: Monitor) = Resource(name, numUnits, monitor::monitors)
+  def add(monitor: Monitor) = Resource(name, numUnits, monitor :: monitors)
 }
 
 object Resource {
