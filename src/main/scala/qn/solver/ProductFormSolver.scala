@@ -1,12 +1,11 @@
 package qn.solver
 
-import breeze.linalg
-import breeze.linalg.{DenseMatrix, DenseVector, diag, inv}
+import breeze.linalg.{DenseMatrix, DenseVector}
 import breeze.stats.distributions.{ContinuousDistr, DiscreteDistr, Moments}
 import com.typesafe.scalalogging.StrictLogging
 import qn._
 import qn.distribution.Distribution
-import qn.monitor.{Estimation, Monitor, StationaryDistributionMonitor}
+import qn.monitor.{Estimation, Monitor, SojournMonitor, StationaryDistributionMonitor}
 
 import scala.util.Try
 
@@ -14,13 +13,15 @@ case class ProductFormSolver(network: Network) extends StrictLogging {
 
   private def calcStationaryDistribution(incomingRates: DenseVector[Double],
                                          transitionMatrix: DenseMatrix[Double],
-                                         serviceRates: DenseVector[Double]
-                                        ): Try[Seq[DiscreteDistr[Int]]] = {
+                                         serviceRates: DenseVector[Double]): Try[Seq[DiscreteDistr[Int]]] = {
     logger.info(incomingRates.toString())
     logger.info(transitionMatrix.toString())
     logger.info(serviceRates.toString())
+    val resourceRates = (DenseMatrix.eye[Double](incomingRates.activeSize) - transitionMatrix).t \ incomingRates
+
     // Lambda = (I-Q)^-1'.L
-    val resourceRates = inv(DenseMatrix.eye[Double](incomingRates.activeSize) - transitionMatrix).t * incomingRates
+
+    //    val resourceRates = inv().t * incomingRates
 
     val loads:DenseVector[Double] = resourceRates :/ serviceRates
 
@@ -28,17 +29,21 @@ case class ProductFormSolver(network: Network) extends StrictLogging {
       Try(throw new IllegalStateException("Network is overload: " + loads.toScalaVector().mkString(",")))
     }
     else {
-      Try(loads.toArray.toSeq.map(rho => Distribution.geom(rho)))
+      Try(loads.toArray.toSeq.map(rho => Distribution.geom(1 - rho)))
     }
   }
 
 
   private def calcMonitors(stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): Map[Monitor, Try[Estimation]] = {
     val netDistributions = network.monitors.map {
+      case monitor: SojournMonitor => monitor -> Try(monitor.estimate(network, stationaryDistribution))
       case monitor => monitor -> Try(throw new NotImplementedError(s"Monitor $monitor is not implemented yet"))
     }
     val resourceDistributions = network.resources.flatMap { resource => resource.monitors.map {
       case monitor: StationaryDistributionMonitor => monitor -> Try(monitor.estimate(resource, stationaryDistribution))
+      case monitor: SojournMonitor => monitor -> Try(monitor.estimate(resource, network.generators.head.trajectory match {
+        case NetworkTopology(_, services, _, _) => services(resource)
+      }, stationaryDistribution))
       case monitor => monitor -> Try(throw new NotImplementedError(s"Monitor $monitor is not implemented yet"))
     }
     }
@@ -56,12 +61,12 @@ case class ProductFormSolver(network: Network) extends StrictLogging {
     val resources = network.resources
     val lambda = 1.0 / interArrivalDist.mean
     val sourceTransitions = transitions.filter(_.from == Resource.source)
-    val incomingRates = DenseVector((for (idx <- resources.indices) yield sourceTransitions.find(_.to == network.resources(idx)).fold(0.0)(_.share * lambda)).toArray)
-    val serviceRates = DenseVector(resources.indices.map(idx => resources(idx).numUnits / services(resources(idx)).mean).toArray)
-    val transitionMatrix = DenseMatrix(for (
-      i <- resources.indices;
-      j <- resources.indices
-    ) yield transitions.find(trans => trans.from == resources(i) && trans.to == resources(j)).fold(0.0)(_.share)).reshape(network.resources.size, network.resources.size).t
+    val incomingRates = DenseVector(resources.map(resource => sourceTransitions.find(_.to == resource).fold(0.0)(_.share * lambda)).toArray)
+    val serviceRates = DenseVector(resources.map(resource => resource.numUnits / services(resource).mean).toArray)
+    val transitionMatrix = DenseMatrix.zeros[Double](resources.size, resources.size)
+    for (i <- resources.indices; j <- resources.indices) {
+      transitionMatrix.update(i, j, transitions.find(trans => trans.from == resources(i) && trans.to == resources(j)).fold(0.0)(_.share))
+    }
     calcStationaryDistribution(incomingRates, transitionMatrix, serviceRates).map(_.zipWithIndex.map(pair => resources(pair._2) -> pair._1).toMap)
   }
 
@@ -77,15 +82,4 @@ case class ProductFormSolver(network: Network) extends StrictLogging {
     }
   }
 
-  private def laplaceSojourn(incomeProb: linalg.DenseVector[Double],
-                             outgoingProb: linalg.DenseVector[Double],
-                             transition: linalg.Matrix[Double],
-                             nodeLaplace: Array[Double => Double]): Double => Double = { x =>
-    val gammaAtX: DenseMatrix[Double] = diag(linalg.DenseVector(nodeLaplace.map(_ (x))))
-    val elem: DenseMatrix[Double] = DenseMatrix.eye[Double](incomeProb.size) - gammaAtX * transition
-    val half1 = incomeProb.t * inv(elem)
-    val half2: DenseVector[Double] = gammaAtX.t * outgoingProb
-
-    half1 * half2
-  }
 }

@@ -1,18 +1,34 @@
 package qn.distribution
 
 import breeze.linalg.DenseVector
-import breeze.numerics.pow
 import breeze.stats.distributions.{ContinuousDistr, HasCdf, HasInverseCdf, Moments, _}
+import galileo.environment.Environment
+import galileo.expr._
+
+case class LaplaceReprecentation(representation: Expr) {
+  def moment(k: Int) = {
+    derive(k).at(0)
+  }
+
+  def derive(k: Int): LaplaceReprecentation = {
+    if (k == 0)
+      this
+    else
+      LaplaceReprecentation(Derivative(representation, Variable("t"))).derive(k - 1)
+  }
+
+  def at(t: Double) = {
+    val env = new Environment(Option.empty)
+    env.set("t", Number(t))
+    representation.visit().visit(Option(env)).eval().doubleValue
+  }
+}
 
 trait HasLaplaceTransform {
-  def laplaceAt(x:Double):Double
+  def laplace: LaplaceReprecentation
 }
 
-trait HasLaplaceDerivative {
-  def laplaceDerivative(power:Int):Double
-}
-
-case class Erlang(rate:Double, scale:Int) extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf with HasInverseCdf {
+case class Erlang(rate: Double, scale: Int) extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf with HasInverseCdf with HasLaplaceTransform {
   private val gamma = Gamma(rate, scale)
   override def unnormalizedLogPdf(x: Double): Double = gamma.unnormalizedLogPdf(x)
 
@@ -33,6 +49,13 @@ case class Erlang(rate:Double, scale:Int) extends ContinuousDistr[Double] with M
   override def inverseCdf(p: Double): Double = gamma.inverseCdf(p)
 
   override def draw(): Double = gamma.draw()
+
+  override def laplace: LaplaceReprecentation = {
+    val t = Variable("t")
+    val lambda = Number(rate)
+    val k = Number(scale)
+    LaplaceReprecentation(Power(Fraction(lambda, Diff(lambda, t)), -k))
+  }
 }
 
 object Distribution {
@@ -48,11 +71,11 @@ object Distribution {
 
   def sum(distribution: Exponential, num: Integer) = erlang(distribution.rate, num)
 
-  def sumRandom(distribution: Exponential, num: Geometric) = Exponential(distribution.rate * num.p)
+  def sumRandom(distribution: Exponential, num: Geometric) = exp(distribution.rate * num.p)
 
-  def thinning(distribution: Exponential, prob: Double) = Exponential(distribution.rate * prob)
+  def thinning(distribution: Exponential, prob: Double) = exp(distribution.rate * prob)
 
-  implicit class RichExponential(exp: Exponential) extends Moments[Double, Double] with ContinuousDistr[Double] with HasLaplaceTransform with HasLaplaceDerivative {
+  case class RichExponential(val exp: Exponential) extends Moments[Double, Double] with ContinuousDistr[Double] with HasLaplaceTransform {
     override def mean: Double = 1.0 / exp.rate
 
     override def variance: Double = 1.0 / (exp.rate * exp.rate)
@@ -67,9 +90,11 @@ object Distribution {
 
     override def draw(): Double = exp.draw()
 
-    override def laplaceAt(x: Double): Double = 1.0 / (1 - x / exp.rate)
-
-    override def laplaceDerivative(power: Int): Double = pow(exp.rate, power)
+    override def laplace: LaplaceReprecentation = {
+      val t = Variable("t")
+      val lambda = Number(exp.rate)
+      LaplaceReprecentation(Fraction(lambda, Diff(lambda, t)))
+    }
   }
 }
 
@@ -105,4 +130,23 @@ case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis =
   override def mode: Double = breeze.stats.mode(values).mode
 
   override def entropy: Double = ???
+}
+
+case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand) extends ContinuousDistr[Double] with Moments[Double, Double] {
+  override def unnormalizedLogPdf(x: Double): Double = ???
+
+  override def logNormalizer: Double = ???
+
+  override def mean: Double = laplace.moment(1)
+
+  override def variance: Double = {
+    val mean = laplace.derive(1)
+    mean.moment(1) - (mean.at(0) * mean.at(0))
+  }
+
+  override def mode: Double = ???
+
+  override def entropy: Double = ???
+
+  override def draw(): Double = ???
 }

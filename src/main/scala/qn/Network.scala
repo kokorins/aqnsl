@@ -4,10 +4,10 @@ import breeze.stats.distributions.{ContinuousDistr, Moments}
 import qn.monitor.Monitor
 
 case class Network(name: String,
-                   resources: List[Resource] = List(),
+                   resources: Seq[Resource] = Seq(),
                    generators: List[OrdersStream] = List(),
                    monitors: List[Monitor] = List()) {
-  def add(resource: Resource): Network = Network(name, resource :: resources, generators, monitors)
+  def add(resource: Resource): Network = Network(name, resources :+ resource, generators, monitors)
   def add(generator: OrdersStream): Network = Network(name, resources, generator :: generators, monitors)
   def add(monitor: Monitor) = Network(name, resources, generators, monitor :: monitors)
 }

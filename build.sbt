@@ -9,11 +9,11 @@ libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze-natives" % "0.12",
   "org.scalanlp" %% "breeze-viz" % "0.12",
   "com.typesafe.play" %% "play-json" % "2.5.3",
-  "org.specs2" %% "specs2-core" % "3.8.3" % "test",
-  "org.specs2" %% "specs2-matcher-extra" % "3.8.3" % "test",
   "com.typesafe.akka" %% "akka-actor" % "2.4.6",
   "ch.qos.logback" %  "logback-classic" % "1.1.7",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
+  "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.13.2" % "test"
 )
 
 resolvers ++= Seq(
