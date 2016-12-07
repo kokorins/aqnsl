@@ -81,7 +81,7 @@ case class SojournMonitor(name:String) extends Monitor {
   }
 
   private def vecToExprVec(vec: linalg.Vector[Double]) = {
-    galileo.linalg.DenseMatrix(List(vec.toArray.toList.map(Number(_)))).transpose
+    galileo.linalg.DenseMatrix(List(vec.toArray.toList.map(Number))).transpose
   }
 
 }
