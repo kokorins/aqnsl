@@ -15,8 +15,6 @@ case class SimulatorArgs(stopAt: Double)
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
   def results: Map[Monitor, Try[Estimation]]
-
-  def warnings: Map[Monitor, String] = Map()
 }
 
 trait StateUpdate
@@ -43,8 +41,6 @@ case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDist
   }
 
   override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
-
-  override def warnings: Map[Monitor, String] = monitors.mapValues(_.warnings)
 }
 
 object GeneratorEntity {
@@ -94,7 +90,7 @@ case class Simulator(entities: List[Entity], sources: List[Entity], args: Simula
       state = triggerNext(state)
     }
     entities.foldLeft(Result(Map(), Map()))((lhs, rhs) => {
-      lhs.copy(lhs.results ++ rhs.results, lhs.warnings ++ rhs.warnings)
+      lhs.copy(lhs.results ++ rhs.results)
     })
   }
 
