@@ -14,8 +14,12 @@ case class SimulatorArgs(stopAt: Double)
 
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
+}
+
+trait ResultEntity extends Entity {
   def results: Map[Monitor, Try[Estimation]]
 }
+
 
 trait StateUpdate
 
@@ -25,7 +29,7 @@ trait EstimationAppender {
   def warnings: String
 }
 
-case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender]) extends Entity {
+case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender]) extends ResultEntity {
   private def generateNextOrder(time:Double): (Order, Double) = {
     (new Order(GeneratorEntity.nextId()) {}, distribution.draw() + time)
   }
@@ -83,7 +87,7 @@ case class SimulatorState(next: ScheduledCommand, events: mutable.PriorityQueue[
   }
 }
 
-case class Simulator(entities: List[Entity], sources: List[Entity], args: SimulatorArgs) {
+case class Simulator(entities: List[ResultEntity], sources: List[ResultEntity], args: SimulatorArgs) {
   def simulate(): Try[Result] = Try {
     var state = init(entities, sources, args)
     while(!state.isStop) {
@@ -104,7 +108,7 @@ case class Simulator(entities: List[Entity], sources: List[Entity], args: Simula
     }
   }
 
-  def init(entities: List[Entity], sources: List[Entity], simulatorArgs: SimulatorArgs): SimulatorState = {
+  def init(entities: List[ResultEntity], sources: List[ResultEntity], simulatorArgs: SimulatorArgs): SimulatorState = {
     val queue = mutable.PriorityQueue.newBuilder[ScheduledCommand](Ordering.by(-_.time))
     queue.enqueue(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), simulatorArgs.stopAt))
     SimulatorState(ScheduledCommand(StartSimulatorCommand, Option.empty, sources, 0), queue)
@@ -116,7 +120,7 @@ object Simulator {
     case SojournMonitor(_) => SojournEstimationAppender(monitor, ArrayBuffer(), mutable.Map())
   }
   def apply(network: Network, args: SimulatorArgs): Simulator = {
-    val entities: List[Entity] = network.generators.flatMap(orderStream => {
+    val entities: List[ResultEntity] = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
           val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, Map(), NodeState(List(), pair._1.numUnits, List())))

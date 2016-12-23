@@ -15,7 +15,7 @@ import scala.util.Try
 case class NetworkStateDiff(at: Double, networkIn: Set[Order], networkOut: Set[Order]) extends StateUpdate
 case class NetworkState(nodeEntities: Map[Resource, NodeEntity]) {}
 
-case class NetworkEntity(networkTopology: NetworkTopology, monitors: Map[Monitor, EstimationAppender], state: NetworkState) extends Entity {
+case class NetworkEntity(networkTopology: NetworkTopology, monitors: Map[Monitor, EstimationAppender], state: NetworkState) extends ResultEntity {
   override def receive(event: ScheduledCommand): Seq[ScheduledCommand] = event match {
     case ScheduledCommand(GenerateSimulatorCommand(order), _, _, time) =>
       val sources = networkTopology.transitions.filter(_.from == Resource.source).toList
@@ -30,47 +30,6 @@ case class NetworkEntity(networkTopology: NetworkTopology, monitors: Map[Monitor
   }
 
   override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
-
-  override def warnings: Map[Monitor, String] = monitors.mapValues(_.warnings)
-}
-
-case class NodeState(var queue: List[Order], numSlots: Int, var processing: List[Order]) {
-  def apply(diff: NodeStateDiff): NodeState = {
-    val locQueue = queue.filter(q => diff.fromQueue.contains(q)) ::: diff.toQueue
-    val locProcessing = processing.filter(p => diff.fromProcessing.contains(p)) ::: diff.toProcessing
-    NodeState(locQueue, numSlots, locProcessing)
-  }
-}
-
-case class NodeStateDiff(at: Double, toQueue: List[Order], fromQueue: Set[Order], toProcessing: List[Order], fromProcessing: Set[Order])
-
-case class NodeEntity(distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender], var state: NodeState) extends Entity {
-  override def receive(event: ScheduledCommand): Seq[ScheduledCommand] = event match {
-    case ScheduledCommand(EnterSimulatorCommand(order), sender, _, now) =>
-      if (state.processing.size < state.numSlots) {
-        state = state.apply(NodeStateDiff(now, List(), Set(), List(order), Set()))
-        Seq(ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), this :: sender.toList, now + distribution.draw()))
-      } else {
-        state = state.apply(NodeStateDiff(now, List(order), Set(), List(), Set()))
-        Seq()
-      }
-    case ScheduledCommand(ProcessedSimulatorCommand(order), _, receivers, now) =>
-      val fromProcessing = Set(order)
-      val toQueue = List()
-      if (state.queue.nonEmpty) {
-        val fromQueue = Set(state.queue.head)
-        val toProcessing = List(state.queue.head)
-        state = state.apply(NodeStateDiff(now, toQueue, fromQueue, toProcessing, fromProcessing))
-        Seq(ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), receivers, now + distribution.draw()))
-      } else {
-        state = state.apply(NodeStateDiff(now, toQueue, Set(), List(), fromProcessing))
-        Seq()
-      }
-  }
-
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
-
-  override def warnings: Map[Monitor, String] = monitors.mapValues(_.warnings)
 }
 
 case class SojournEstimationAppender(monitor: Monitor, var sample: ArrayBuffer[Double], var orderStarts: mutable.Map[Order, Double]) extends EstimationAppender {
