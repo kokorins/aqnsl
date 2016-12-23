@@ -125,7 +125,7 @@ object Simulator {
         case nt: NetworkTopology =>
           val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, Map(), NodeState(List(), pair._1.numUnits, List())))
           val monitors = network.monitors.map(monitor => monitor -> networkEstimatorFactory(monitor)).toMap
-          val networkEntity = NetworkEntity(nt, monitors, NetworkState(nodeEntities))
+          val networkEntity = NetworkEntity(nt, monitors, NetworkStructure(nodeEntities))
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }

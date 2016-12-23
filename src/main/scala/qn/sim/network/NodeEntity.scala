@@ -22,9 +22,7 @@ trait NodeQuery {
 }
 
 case class NodeLogger(events: mutable.ArrayBuffer[NodeStateEvent]) extends NodeQuery {
-  override def append(event: NodeStateEvent): Unit = {
-    events.append(event)
-  }
+  override def append(event: NodeStateEvent): Unit = events.append(event)
 }
 
 case class NodeEntity(distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender] = Map(), var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = new NodeQuery {}) extends ResultEntity {
