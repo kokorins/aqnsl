@@ -1,15 +1,11 @@
 package qn.sim.network
 
-import breeze.stats.distributions.ApacheContinuousDistribution
-import org.apache.commons.math3.distribution.AbstractRealDistribution
-import org.apache.commons.math3.random.EmpiricalDistribution
 import qn.distribution.Distribution
-import qn.monitor.{Estimation, Monitor, SojournEstimation}
+import qn.monitor.{Estimation, Monitor}
 import qn.sim._
 import qn.{NetworkTopology, Resource}
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 case class NetworkStateEvent(at: Double, networkIn: Set[Order], networkOut: Set[Order])
@@ -48,35 +44,16 @@ case class NetworkEntity(networkTopology: NetworkTopology, monitors: Map[Monitor
         val event = NetworkStateEvent(at, Set(), Set(order))
         state = state.apply(event)
         networkQuery.append(event)
+        Seq()
       } else {
         val to = structure.nodeEntities(toResource)
+        val event = NetworkStateEvent(at, Set(), Set())
+        state = state.apply(event)
+        networkQuery.append(event)
         Seq(ScheduledCommand(EnterSimulatorCommand(order), Option(this), List(to), at))
       }
   }
 
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
+  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
 
-case class SojournEstimationAppender(monitor: Monitor, var sample: ArrayBuffer[Double], var orderStarts: mutable.Map[Order, Double]) extends EstimationAppender {
-  override def estimator: Try[Estimation] = Try {
-                                                  val empiricalDistribution = new EmpiricalDistribution()
-                                                  empiricalDistribution.load(sample.toArray)
-                                                  SojournEstimation(monitor, new ApacheContinuousDistribution {
-                                                    override protected val inner: AbstractRealDistribution = empiricalDistribution
-                                                  })
-                                                }
-
-  override def warnings: String = ""
-
-  override def append(update: StateUpdate): EstimationAppender = update match {
-    case NetworkStateEvent(at, itemIn, itemOut) => {
-      for (o <- itemOut) {
-        sample += at - orderStarts(o)
-      }
-      for (o <- itemIn) {
-        orderStarts += o -> at
-      }
-      this
-    }
-  }
-}

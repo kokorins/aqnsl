@@ -3,14 +3,13 @@ package qn.sim
 import breeze.stats.distributions.ContinuousDistr
 import qn.monitor.{Estimation, Monitor, SojournMonitor}
 import qn.sim.network._
-import qn.solver.Result
 import qn.{Network, NetworkTopology}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-case class SimulatorArgs(stopAt: Double)
+case class SimulatorArgs(networkQuery: NetworkQuery, stopAt: Double)
 
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
@@ -20,13 +19,8 @@ trait ResultEntity extends Entity {
   def results: Map[Monitor, Try[Estimation]]
 }
 
-
-trait StateUpdate
-
 trait EstimationAppender {
-  def append(update: StateUpdate): EstimationAppender
-  def estimator: Try[Estimation]
-  def warnings: String
+  def estimate: Try[Estimation]
 }
 
 case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender]) extends ResultEntity {
@@ -44,7 +38,7 @@ case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDist
     case _ => Seq()
   }
 
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
+  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
 
 object GeneratorEntity {
@@ -87,15 +81,12 @@ case class SimulatorState(next: ScheduledCommand, events: mutable.PriorityQueue[
   }
 }
 
-case class Simulator(entities: List[ResultEntity], sources: List[ResultEntity], args: SimulatorArgs) {
-  def simulate(): Try[Result] = Try {
+case class Simulator(entities: List[Entity], sources: List[Entity], args: SimulatorArgs) {
+  def simulate(): Try[Unit] = Try {
     var state = init(entities, sources, args)
     while(!state.isStop) {
       state = triggerNext(state)
     }
-    entities.foldLeft(Result(Map(), Map()))((lhs, rhs) => {
-      lhs.copy(lhs.results ++ rhs.results)
-    })
   }
 
   def triggerNext(state: SimulatorState): SimulatorState = {
@@ -108,7 +99,7 @@ case class Simulator(entities: List[ResultEntity], sources: List[ResultEntity], 
     }
   }
 
-  def init(entities: List[ResultEntity], sources: List[ResultEntity], simulatorArgs: SimulatorArgs): SimulatorState = {
+  def init(entities: List[Entity], sources: List[Entity], simulatorArgs: SimulatorArgs): SimulatorState = {
     val queue = mutable.PriorityQueue.newBuilder[ScheduledCommand](Ordering.by(-_.time))
     queue.enqueue(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), simulatorArgs.stopAt))
     SimulatorState(ScheduledCommand(StartSimulatorCommand, Option.empty, sources, 0), queue)
@@ -120,7 +111,7 @@ object Simulator {
     case SojournMonitor(_) => SojournEstimationAppender(monitor, ArrayBuffer(), mutable.Map())
   }
   def apply(network: Network, args: SimulatorArgs): Simulator = {
-    val entities: List[ResultEntity] = network.generators.flatMap(orderStream => {
+    val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
           val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, Map(), NodeState(List(), pair._1.numUnits, List())))

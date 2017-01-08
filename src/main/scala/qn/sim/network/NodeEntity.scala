@@ -57,5 +57,5 @@ case class NodeEntity(distribution: ContinuousDistr[Double], monitors: Map[Monit
       }
   }
 
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
+  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
