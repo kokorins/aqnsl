@@ -1,7 +1,7 @@
 import breeze.stats.distributions.Exponential
 import qn.Resource._
 import qn.distribution.Distribution
-import qn.monitor.{SojournMonitor, StationaryDistributionMonitor}
+import qn.monitor.{SojournEstimation, SojournMonitor, StationaryDistributionEstimation, StationaryDistributionMonitor}
 import qn.solver.Solver
 import qn.{NetworkTopology, Transition, _}
 
