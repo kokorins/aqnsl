@@ -15,10 +15,11 @@ class SimulatorTest extends PropSpec with Matchers {
   property("mm1 simulation") {
     val networkSojourn = SojournEstimationAppender(SojournMonitor("Network"))
     val result = Simulator(Models.mm1_08, SimulatorArgs(networkSojourn, 10.0)).simulate()
-    assert(result.isSuccess)
+    result.isSuccess should be(true)
     networkSojourn.estimate.map({ case SojournEstimation(_, distr) => distr match {
-      case dist: LaplaceBasedDistribution => dist.mean should ===(2 * 1 / (1 - 0.8))
+      case dist: LaplaceBasedDistribution => dist.mean should === (2 * 1 / (1 - 0.8))
       case dist: ApacheContinuousDistribution => dist.mean should === (2 * 1 / (1 - 0.8) +- 0.1)
+      case _ => fail()
     }
     })
   }

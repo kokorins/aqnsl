@@ -25,7 +25,7 @@ case class NodeLogger(events: mutable.ArrayBuffer[NodeStateEvent]) extends NodeQ
   override def append(event: NodeStateEvent): Unit = events.append(event)
 }
 
-case class NodeEntity(distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender] = Map(), var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = new NodeQuery {}) extends ResultEntity {
+case class NodeEntity(distribution: ContinuousDistr[Double], var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = new NodeQuery {}) extends Entity {
   override def receive(scheduledEvent: ScheduledCommand): Seq[ScheduledCommand] = scheduledEvent match {
     case ScheduledCommand(EnterSimulatorCommand(order), sender, _, now) =>
       if (state.processing.size < state.numSlots) {
@@ -56,6 +56,4 @@ case class NodeEntity(distribution: ContinuousDistr[Double], monitors: Map[Monit
         Seq()
       }
   }
-
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }

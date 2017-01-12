@@ -1,12 +1,11 @@
 package qn.sim
 
 import breeze.stats.distributions.ContinuousDistr
-import qn.monitor.{Estimation, Monitor, SojournMonitor}
+import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
 import qn.{Network, NetworkTopology}
 
 import scala.collection.mutable
-import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 case class SimulatorArgs(networkQuery: NetworkQuery, stopAt: Double)
@@ -107,16 +106,12 @@ case class Simulator(entities: List[Entity], sources: List[Entity], args: Simula
 }
 
 object Simulator {
-  def networkEstimatorFactory(monitor: Monitor): EstimationAppender = monitor match {
-    case SojournMonitor(_) => SojournEstimationAppender(monitor, ArrayBuffer(), mutable.Map())
-  }
   def apply(network: Network, args: SimulatorArgs): Simulator = {
     val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
-          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, Map(), NodeState(List(), pair._1.numUnits, List())))
-          val monitors = network.monitors.map(monitor => monitor -> networkEstimatorFactory(monitor)).toMap
-          val networkEntity = NetworkEntity(nt, monitors, NetworkStructure(nodeEntities))
+          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List())))
+          val networkEntity = NetworkEntity(nt, NetworkStructure(nodeEntities), networkQuery = args.networkQuery)
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }
