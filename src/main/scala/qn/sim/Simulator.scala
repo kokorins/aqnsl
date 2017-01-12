@@ -3,6 +3,7 @@ package qn.sim
 import breeze.stats.distributions.ContinuousDistr
 import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
+import qn.util.ImmutableBiMap
 import qn.{Network, NetworkTopology}
 
 import scala.collection.mutable
@@ -111,7 +112,7 @@ object Simulator {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
           val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List())))
-          val networkEntity = NetworkEntity(nt, NetworkStructure(nodeEntities), networkQuery = args.networkQuery)
+          val networkEntity = NetworkEntity(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }

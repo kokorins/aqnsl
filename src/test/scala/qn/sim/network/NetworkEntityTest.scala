@@ -3,6 +3,7 @@ package qn.sim.network
 import org.scalatest.{FunSuite, Matchers}
 import qn.distribution.Singular
 import qn.sim.{GenerateSimulatorCommand, Order, ScheduledCommand}
+import qn.util.ImmutableBiMap
 import qn.{NetworkTopology, Resource}
 
 class NetworkEntityTest extends FunSuite with Matchers {
@@ -14,7 +15,7 @@ class NetworkEntityTest extends FunSuite with Matchers {
                    .addService(node, distr)
                    .addTransition(Resource.source, node)
                    .addTransition(node, Resource.sink)
-    val structure = NetworkStructure(Map(node -> NodeEntity(distr)))
+    val structure = NetworkStructure(ImmutableBiMap(Map(node -> NodeEntity(distr))))
     val network = NetworkEntity(topology, state = NetworkState(Set()), structure = structure)
     val send = network.receive(ScheduledCommand(GenerateSimulatorCommand(order), Option.empty, List(network), 0.0))
   }

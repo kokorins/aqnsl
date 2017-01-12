@@ -86,4 +86,4 @@ case class SojournMonitor(name:String) extends Monitor {
 
 }
 
-case class SojournEstimation(monitor: Monitor, continuousDistr: ContinuousDistr[Double]) extends Estimation
+case class SojournEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double]) extends Estimation
