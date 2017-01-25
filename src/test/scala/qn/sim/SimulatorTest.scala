@@ -41,9 +41,10 @@ class SimulatorTest extends PropSpec with Matchers {
     val server: Resource = Resource("Server", 1)
 
     val networkName = "MM1"
+    val rate = 0.8
     val mm1 = Network(networkName)
               .add(server)
-              .add(OrdersStream(networkName, Distribution.exp(0.8),
+              .add(OrdersStream(networkName, Distribution.exp(rate),
                 NetworkTopology()
                 .addTransition(source, server)
                 .addTransition(server, sink)
@@ -52,7 +53,8 @@ class SimulatorTest extends PropSpec with Matchers {
 
     val networkProcessed = ProcessedEstimator(networkName)
     val nodeBacklog = BacklogEstimator(server)
-    val sim = Simulator(mm1, SimulatorArgs(100.0, networkProcessed, Map(server -> nodeBacklog)))
+    val stopAt = 1000.0
+    val sim = Simulator(mm1, SimulatorArgs(stopAt, networkProcessed, Map(server -> nodeBacklog)))
     sim.simulate()
 
     nodeBacklog.estimate.map({ case DiscreteEstimation(_, distr) => distr match {
@@ -61,7 +63,7 @@ class SimulatorTest extends PropSpec with Matchers {
     }
     }).get
     networkProcessed.estimate.map({ case ContinuousEstimation(_, distr) => distr match {
-      case dist: Singular => dist.value should be(80.0 +- 10.0)
+      case dist: Singular => dist.value should be(stopAt * rate +-.1 * (stopAt * rate))
       case _ => fail()
     }
     }).get
