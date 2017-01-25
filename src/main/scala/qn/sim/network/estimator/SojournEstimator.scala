@@ -1,24 +1,23 @@
-package qn.sim.network
+package qn.sim.network.estimator
 
 import breeze.stats.distributions.ApacheContinuousDistribution
-import com.typesafe.scalalogging.Logger
 import org.apache.commons.math3.distribution.AbstractRealDistribution
 import org.apache.commons.math3.random.EmpiricalDistribution
-import qn.monitor.{Estimation, Monitor, SojournEstimation}
-import qn.sim.{EstimationAppender, Order}
+import qn.monitor.{ContinuousEstimation, Estimation, Monitor, NamedMonitor}
+import qn.sim.network.{NetworkQuery, NetworkStateEvent}
+import qn.sim.{Estimator, Order}
 
 import scala.collection.mutable
 import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
-case class SojournEstimationAppender(monitor: Monitor, var sample: ArrayBuffer[Double] = ArrayBuffer(), var orderStarts: mutable.Map[Order, Double] = mutable.Map())
-  extends EstimationAppender with NetworkQuery {
-  val logger = Logger[EstimationAppender]
+case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], orderStarts: mutable.Map[Order, Double])
+  extends Estimator with NetworkQuery {
 
   override def estimate: Try[Estimation] = Try {
     val empiricalDistribution = new EmpiricalDistribution()
     empiricalDistribution.load(sample.toArray)
-    val res = SojournEstimation(monitor, new ApacheContinuousDistribution {
+    val res = ContinuousEstimation(monitor, new ApacheContinuousDistribution {
       override protected val inner: AbstractRealDistribution = empiricalDistribution
 
       override def toString: String = s"${inner.getClass.getSimpleName}(mean: ${this.mean}, variance: ${this.variance})"
@@ -34,4 +33,8 @@ case class SojournEstimationAppender(monitor: Monitor, var sample: ArrayBuffer[D
       orderStarts += o -> event.at
     }
   }
+}
+
+object SojournEstimator {
+  def apply(name: String): SojournEstimator = SojournEstimator(NamedMonitor(name), ArrayBuffer(), mutable.Map())
 }

@@ -2,7 +2,7 @@ package qn
 
 import breeze.stats.distributions.Exponential
 import qn.distribution.{Distribution, LaplaceBasedDistribution}
-import qn.monitor.{SojournEstimation, SojournMonitor, StationaryDistributionEstimation, StationaryDistributionMonitor}
+import qn.monitor.{ContinuousEstimation, SojournMonitor, StationaryDistributionEstimation, StationaryDistributionMonitor}
 import qn.solver.Solver
 
 import scala.util.Try
@@ -56,7 +56,7 @@ object Runner {
 
     val result = resultTry.get
     val sojourn = result.results(sojournMonitor).map({
-      case SojournEstimation(_, distribution) => distribution match {
+      case ContinuousEstimation(_, distribution) => distribution match {
         case exp: RichExponential => exp.mean
         case lap: LaplaceBasedDistribution => lap.mean
       }
@@ -80,7 +80,7 @@ object Runner {
     val meanResponses = warehouse.resources.flatMap(resource => {
       resource.monitors.filter(_.isInstanceOf[SojournMonitor]).map({
         case monitor: SojournMonitor =>
-          result.results(monitor).map({ case SojournEstimation(_, distribution) => distribution match {
+          result.results(monitor).map({ case ContinuousEstimation(_, distribution) => distribution match {
             case exp: RichExponential => (monitor.name, exp.mean)
             case lap: LaplaceBasedDistribution => (monitor.name, lap.mean)
           }
@@ -122,7 +122,7 @@ object Runner {
 
     val result = resultTry.get
     val sojourn = result.results(sojournMonitor).map({
-      case SojournEstimation(_, distribution) => distribution match {
+      case ContinuousEstimation(_, distribution) => distribution match {
         case exp: RichExponential => exp.mean
         case lap: LaplaceBasedDistribution => lap.mean
       }
@@ -146,7 +146,7 @@ object Runner {
     val meanResponses = warehouse.resources.flatMap(resource => {
       resource.monitors.filter(_.isInstanceOf[SojournMonitor]).map({
         case monitor: SojournMonitor =>
-          result.results(monitor).map({ case SojournEstimation(_, distribution) => distribution match {
+          result.results(monitor).map({ case ContinuousEstimation(_, distribution) => distribution match {
             case exp: RichExponential => (monitor.name, exp.mean)
             case lap: LaplaceBasedDistribution => (monitor.name, lap.mean)
           }

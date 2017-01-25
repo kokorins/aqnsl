@@ -4,7 +4,7 @@ import org.scalactic.TolerantNumerics
 import org.scalatest._
 import qn.distribution.LaplaceBasedDistribution
 import qn.model.Models
-import qn.monitor.SojournEstimation
+import qn.monitor.ContinuousEstimation
 import qn.solver.ProductFormSolver
 
 class NetworkDefinitionSpec extends PropSpec with Matchers {
@@ -17,7 +17,7 @@ class NetworkDefinitionSpec extends PropSpec with Matchers {
     assert(monitors.nonEmpty)
     val sojournEstimation = monitors(Models.networkSojourn)
     sojournEstimation.get match {
-      case SojournEstimation(_, distr) => distr match {
+      case ContinuousEstimation(_, distr) => distr match {
         case distr: LaplaceBasedDistribution => distr.mean should ===(5.0)
         case _ => fail()
       }
@@ -31,7 +31,7 @@ class NetworkDefinitionSpec extends PropSpec with Matchers {
     val monitors = result.get.results
     assert(monitors.nonEmpty)
     val sojournEstimation = monitors(Models.networkSojourn)
-    sojournEstimation.map({ case SojournEstimation(_, distr) => distr match {
+    sojournEstimation.map({ case ContinuousEstimation(_, distr) => distr match {
       case dist: LaplaceBasedDistribution => dist.mean should ===(2 * 1 / (1 - 0.8))
     }
     })
@@ -43,7 +43,7 @@ class NetworkDefinitionSpec extends PropSpec with Matchers {
     val monitors = result.get.results
     assert(monitors.nonEmpty)
     val sojournEstimation = monitors(Models.networkSojourn)
-    sojournEstimation.map({ case SojournEstimation(_, distr) => distr match {
+    sojournEstimation.map({ case ContinuousEstimation(_, distr) => distr match {
       case dist: LaplaceBasedDistribution =>
         dist.mean should ===(1 / (1 - 0.8))
       case _ => fail()
@@ -58,7 +58,7 @@ class NetworkDefinitionSpec extends PropSpec with Matchers {
     val monitors = result.get.results
     assert(monitors.nonEmpty)
     val sojournEstimation = monitors(Models.networkSojourn)
-    sojournEstimation.map({ case SojournEstimation(_, distr) => distr match {
+    sojournEstimation.map({ case ContinuousEstimation(_, distr) => distr match {
       case dist: LaplaceBasedDistribution =>
         dist.mean should ===(3 / (1 - 0.8))
       case _ => fail()

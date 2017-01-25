@@ -5,18 +5,18 @@ import org.scalactic.TolerantNumerics
 import org.scalatest.{Matchers, PropSpec}
 import qn.distribution.LaplaceBasedDistribution
 import qn.model.Models
-import qn.monitor.{SojournEstimation, SojournMonitor}
-import qn.sim.network.SojournEstimationAppender
+import qn.monitor.ContinuousEstimation
+import qn.sim.network.estimator.SojournEstimator
 
 import scala.collection.mutable
 
 class SimulatorTest extends PropSpec with Matchers {
   implicit val doubleEq = TolerantNumerics.tolerantDoubleEquality(0.01)
   property("mm1 simulation") {
-    val networkSojourn = SojournEstimationAppender(SojournMonitor("Network"))
-    val result = Simulator(Models.mm1_08, SimulatorArgs(networkSojourn, 10.0)).simulate()
+    val networkSojourn = SojournEstimator("Network")
+    val result = Simulator(Models.mm1_08, SimulatorArgs(networkSojourn, Map(), 10.0)).simulate()
     result.isSuccess should be(true)
-    networkSojourn.estimate.map({ case SojournEstimation(_, distr) => distr match {
+    networkSojourn.estimate.map({ case ContinuousEstimation(_, distr) => distr match {
       case dist: LaplaceBasedDistribution => dist.mean should be(2 * 1 / (1 - 0.8))
       case dist: ApacheContinuousDistribution => dist.mean should be(2 * 1 / (1 - 0.8) +- 0.1)
       case _ => fail()

@@ -1,11 +1,9 @@
 package qn.sim.network
 
 import breeze.stats.distributions.ContinuousDistr
-import qn.monitor.{Estimation, Monitor}
 import qn.sim._
 
 import scala.collection.mutable
-import scala.util.Try
 
 case class NodeState(var queue: List[Order], numSlots: Int, var processing: List[Order]) {
   def apply(diff: NodeStateEvent): NodeState = {
@@ -18,14 +16,18 @@ case class NodeState(var queue: List[Order], numSlots: Int, var processing: List
 case class NodeStateEvent(at: Double, toQueue: List[Order], fromQueue: Set[Order], toProcessing: List[Order], fromProcessing: Set[Order])
 
 trait NodeQuery {
-  def append(nodeStateEvent: NodeStateEvent): Unit = {}
+  def append(event: NodeStateEvent): Unit
+}
+
+case object EmptyNodeQuery extends NodeQuery {
+  override def append(event: NodeStateEvent): Unit = {}
 }
 
 case class NodeLogger(events: mutable.ArrayBuffer[NodeStateEvent]) extends NodeQuery {
   override def append(event: NodeStateEvent): Unit = events.append(event)
 }
 
-case class NodeEntity(distribution: ContinuousDistr[Double], var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = new NodeQuery {}) extends Entity {
+case class NodeEntity(distribution: ContinuousDistr[Double], var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = EmptyNodeQuery) extends Entity {
   override def receive(scheduledEvent: ScheduledCommand): Seq[ScheduledCommand] = scheduledEvent match {
     case ScheduledCommand(EnterSimulatorCommand(order), sender, _, now) =>
       if (state.processing.size < state.numSlots) {

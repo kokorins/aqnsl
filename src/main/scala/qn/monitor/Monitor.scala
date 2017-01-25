@@ -12,6 +12,8 @@ sealed trait Monitor {
   def name:String
 }
 
+case class NamedMonitor(override val name:String) extends Monitor
+
 sealed trait Estimation {
   def monitor:Monitor
 }
@@ -24,7 +26,7 @@ case class StationaryDistributionMonitor(name:String) extends Monitor {
 case class StationaryDistributionEstimation(monitor: Monitor, discreteDistr: DiscreteDistr[Int]) extends Estimation
 
 case class SojournMonitor(name:String) extends Monitor {
-  def estimate(network: Network, stationaryDistributions: Map[Resource, DiscreteDistr[Int]]): SojournEstimation = {
+  def estimate(network: Network, stationaryDistributions: Map[Resource, DiscreteDistr[Int]]): ContinuousEstimation = {
     network.generators.head.trajectory match {
       case NetworkTopology(_, services, transitions, _) => {
         val nodeSojourns = network.resources.map(resource => {
@@ -47,18 +49,17 @@ case class SojournMonitor(name:String) extends Monitor {
         for (i <- resourceIdxs; j <- resourceIdxs)
           transitionMatrix.update(i, j, transitions.find(trans => trans.from == network.resources(i) && trans.to == network.resources(j)).fold(0.0)(_.share))
 
-        SojournEstimation(this, laplaceSojourn(incomingProbs, outgoingProbs, transitionMatrix, nodeSojourns.map({ case distr: HasLaplaceTransform => distr.laplace })))
+        ContinuousEstimation(this, laplaceSojourn(incomingProbs, outgoingProbs, transitionMatrix, nodeSojourns.map({ case distr: HasLaplaceTransform => distr.laplace })))
       }
       case _ => throw new IllegalStateException("Cant work with non network topology")
     }
   }
 
 
-  def estimate(resource: Resource, service: ContinuousDistr[Double], stationaryDistribution: Map[Resource, DiscreteDistr[Int]]) = service match {
-    case RichExponential(expo) => {
-        stationaryDistribution(resource) match {
-          case geom: Geometric => SojournEstimation(this, Distribution.sumRandom(expo, geom))
-        }
+  def estimate(resource: Resource, service: ContinuousDistr[Double], stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): ContinuousEstimation = service match {
+    case RichExponential(expo) =>
+      stationaryDistribution(resource) match {
+        case geom: Geometric => ContinuousEstimation(this, Distribution.sumRandom(expo, geom))
       }
     case _ => throw new IllegalArgumentException(s"Sojourn distribution is not implemented for such service distribution $service")
     }
@@ -86,4 +87,5 @@ case class SojournMonitor(name:String) extends Monitor {
 
 }
 
-case class SojournEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double]) extends Estimation
+case class ContinuousEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double]) extends Estimation
+case class DiscreteEstimation(monitor: Monitor, discreteDistribution: DiscreteDistr[Int]) extends Estimation

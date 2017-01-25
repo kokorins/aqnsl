@@ -4,12 +4,12 @@ import breeze.stats.distributions.ContinuousDistr
 import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
 import qn.util.ImmutableBiMap
-import qn.{Network, NetworkTopology}
+import qn.{Network, NetworkTopology, Resource}
 
 import scala.collection.mutable
 import scala.util.Try
 
-case class SimulatorArgs(networkQuery: NetworkQuery, stopAt: Double)
+case class SimulatorArgs(networkQuery: NetworkQuery, nodeQueries: Map[Resource, NodeQuery], stopAt: Double)
 
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
@@ -19,11 +19,11 @@ trait ResultEntity extends Entity {
   def results: Map[Monitor, Try[Estimation]]
 }
 
-trait EstimationAppender {
+trait Estimator {
   def estimate: Try[Estimation]
 }
 
-case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender]) extends ResultEntity {
+case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, Estimator]) extends Entity {
   private def generateNextOrder(time:Double): (Order, Double) = {
     (new Order(GeneratorEntity.nextId()) {}, distribution.draw() + time)
   }
@@ -38,7 +38,7 @@ case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDist
     case _ => Seq()
   }
 
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
+//  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
 
 object GeneratorEntity {
@@ -111,7 +111,7 @@ object Simulator {
     val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
-          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List())))
+          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List()), args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
           val networkEntity = NetworkEntity(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
           List(networkEntity, generatorEntity) ++ nodeEntities.values

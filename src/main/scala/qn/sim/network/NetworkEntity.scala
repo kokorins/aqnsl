@@ -16,11 +16,11 @@ case class NetworkState(orders: Set[Order]) {
 }
 
 trait NetworkQuery {
-  def append(networkStateEvent: NetworkStateEvent): Unit
+  def append(event: NetworkStateEvent): Unit
 }
 
-case object EmptyQuery extends NetworkQuery {
-  override def append(networkStateEvent: NetworkStateEvent): Unit = {}
+case object EmptyNetworkQuery extends NetworkQuery {
+  override def append(event: NetworkStateEvent): Unit = {}
 }
 
 case class NetworkLogger(events: mutable.ArrayBuffer[NetworkStateEvent]) extends NetworkQuery {
@@ -29,7 +29,7 @@ case class NetworkLogger(events: mutable.ArrayBuffer[NetworkStateEvent]) extends
 
 case class NetworkStructure(nodeEntities: ImmutableBiMap[Resource, NodeEntity])
 
-case class NetworkEntity(networkTopology: NetworkTopology, structure: NetworkStructure, networkQuery: NetworkQuery = EmptyQuery, var state: NetworkState = NetworkState(Set())) extends Entity {
+case class NetworkEntity(networkTopology: NetworkTopology, structure: NetworkStructure, networkQuery: NetworkQuery = EmptyNetworkQuery, var state: NetworkState = NetworkState(Set())) extends Entity {
   val transitions: Map[Resource, Set[Transition]] = networkTopology.transitions.groupBy(_.from)
 
   override def receive(networkEvent: ScheduledCommand): Seq[ScheduledCommand] = networkEvent match {
