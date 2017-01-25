@@ -4,7 +4,7 @@ import breeze.stats.distributions.ApacheContinuousDistribution
 import org.apache.commons.math3.distribution.AbstractRealDistribution
 import org.apache.commons.math3.random.EmpiricalDistribution
 import qn.monitor.{ContinuousEstimation, Estimation, Monitor, NamedMonitor}
-import qn.sim.network.{NetworkQuery, NetworkStateEvent}
+import qn.sim.network.{NetworkQuery, NetworkStateEvent, NodeQuery, NodeStateEvent}
 import qn.sim.{Estimator, Order}
 
 import scala.collection.mutable
@@ -12,7 +12,7 @@ import scala.collection.mutable.ArrayBuffer
 import scala.util.Try
 
 case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], orderStarts: mutable.Map[Order, Double])
-  extends Estimator with NetworkQuery {
+  extends Estimator with NetworkQuery with NodeQuery {
 
   override def estimate: Try[Estimation] = Try {
     val empiricalDistribution = new EmpiricalDistribution()
@@ -30,6 +30,18 @@ case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], order
       sample += event.at - orderStarts(o)
     }
     for (o <- event.networkIn) {
+      orderStarts += o -> event.at
+    }
+  }
+
+  override def append(event: NodeStateEvent): Unit = {
+    for (o <- event.fromProcessing) {
+      sample += event.at - orderStarts(o)
+    }
+    for (o <- event.toQueue) {
+      sample += event.at - orderStarts(o)
+    }
+    for (o <- event.toProcessing if !event.fromQueue.contains(o)) {
       orderStarts += o -> event.at
     }
   }

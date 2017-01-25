@@ -10,6 +10,13 @@ object Models {
   private val node2: Resource = Resource("Service unit 2", 1).add(stationaryDistribution)
   private val node3: Resource = Resource("Service unit 3", 1).add(stationaryDistribution)
   val networkSojourn: SojournMonitor = SojournMonitor("Network Sojourn")
+  val dd1 = Network("DD1")
+            .add(node1)
+            .add(OrdersStream("Fixed Input, Instant Output", Distribution.deterministic(1.0), NetworkTopology()
+                                                                                              .addTransition(Resource.source, node1)
+                                                                                              .addTransition(node1, Resource.sink)
+                                                                                              .addService(node1, Distribution.deterministic(0.0))))
+
   val mm1_08 = Network("MM1")
     .add(node1)
     .add(OrdersStream("Exponential Order Flow", Distribution.exp(0.8), NetworkTopology()

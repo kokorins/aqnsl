@@ -50,7 +50,7 @@ case class NodeEntity(distribution: ContinuousDistr[Double], var state: NodeStat
         val event = NodeStateEvent(now, toQueue, fromQueue, toProcessing, fromProcessing)
         nodeQuery.append(event)
         state = state.apply(event)
-        Seq(ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), receivers, now + distribution.draw()))
+        toProcessing.map(order=> ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), receivers, now + distribution.draw()))
       } else {
         val event = NodeStateEvent(now, toQueue, Set(), List(), fromProcessing)
         nodeQuery.append(event)

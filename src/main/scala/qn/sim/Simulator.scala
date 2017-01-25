@@ -1,6 +1,7 @@
 package qn.sim
 
 import breeze.stats.distributions.ContinuousDistr
+import com.typesafe.scalalogging.Logger
 import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
 import qn.util.ImmutableBiMap
@@ -9,7 +10,7 @@ import qn.{Network, NetworkTopology, Resource}
 import scala.collection.mutable
 import scala.util.Try
 
-case class SimulatorArgs(networkQuery: NetworkQuery, nodeQueries: Map[Resource, NodeQuery], stopAt: Double)
+case class SimulatorArgs(stopAt: Double, networkQuery: NetworkQuery = EmptyNetworkQuery, nodeQueries: Map[Resource, NodeQuery] = Map().withDefaultValue(EmptyNodeQuery))
 
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
@@ -82,10 +83,13 @@ case class SimulatorState(next: ScheduledCommand, events: mutable.PriorityQueue[
 }
 
 case class Simulator(entities: List[Entity], sources: List[Entity], args: SimulatorArgs) {
+//  private val logger = Logger[Simulator]
   def simulate(): Try[Unit] = Try {
     var state = init(entities, sources, args)
+//    logger.info(state.toString)
     while(!state.isStop) {
       state = triggerNext(state)
+//      logger.info(state.toString)
     }
   }
 

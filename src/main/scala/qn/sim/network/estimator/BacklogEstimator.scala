@@ -28,6 +28,7 @@ case class BacklogEstimator(monitor: Monitor, var curBacklog: Int, var lastChang
     cur += event.at - lastChange
     length.put(curBacklog, cur)
     curBacklog += backlogDiff
+    lastChange = event.at
   }
 }
 
