@@ -17,7 +17,7 @@ case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], order
   private val logger = Logger[SojournEstimator]
 
   override def estimate: Try[Estimation] = Try {
-    val empiricalDistribution = new EmpiricalDistribution(sample.size / 10)
+    val empiricalDistribution = new EmpiricalDistribution(sample.size / 5)
     empiricalDistribution.load(sample.toArray)
     logger.info(sample.toString())
     val res = ContinuousEstimation(monitor, new ApacheContinuousDistribution {

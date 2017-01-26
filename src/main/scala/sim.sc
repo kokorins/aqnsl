@@ -22,7 +22,7 @@ val mm1 = Network(networkName)
 val serverBacklog = BacklogEstimator(server)
 val networkSojourn = SojournEstimator(networkName)
 val networkProcessed = ProcessedEstimator(networkName)
-val sim = Simulator(mm1, SimulatorArgs(100.0, CombinedNetworkQuery(List(networkSojourn, networkProcessed)), Map(server -> serverBacklog)))
+val sim = Simulator(mm1, SimulatorArgs(10000.0, CombinedNetworkQuery(List(networkSojourn, networkProcessed)), Map(server -> serverBacklog)))
 sim.simulate()
 
 val sojourn = networkSojourn.estimate.get match {
