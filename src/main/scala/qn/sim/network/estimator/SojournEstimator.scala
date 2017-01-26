@@ -1,6 +1,7 @@
 package qn.sim.network.estimator
 
 import breeze.stats.distributions.ApacheContinuousDistribution
+import com.typesafe.scalalogging.Logger
 import org.apache.commons.math3.distribution.AbstractRealDistribution
 import org.apache.commons.math3.random.EmpiricalDistribution
 import qn.monitor.{ContinuousEstimation, Estimation, Monitor, NamedMonitor}
@@ -13,10 +14,12 @@ import scala.util.Try
 
 case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], orderStarts: mutable.Map[Order, Double])
   extends Estimator with NetworkQuery with NodeQuery {
+  private val logger = Logger[SojournEstimator]
 
   override def estimate: Try[Estimation] = Try {
-    val empiricalDistribution = new EmpiricalDistribution()
+    val empiricalDistribution = new EmpiricalDistribution(sample.size / 10)
     empiricalDistribution.load(sample.toArray)
+    logger.info(sample.toString())
     val res = ContinuousEstimation(monitor, new ApacheContinuousDistribution {
       override protected val inner: AbstractRealDistribution = empiricalDistribution
 

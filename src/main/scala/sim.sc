@@ -1,6 +1,8 @@
+import breeze.plot._
 import qn.Resource.{sink, source}
 import qn._
 import qn.distribution.Distribution
+import qn.monitor.ContinuousEstimation
 import qn.sim.network.CombinedNetworkQuery
 import qn.sim.network.estimator.{BacklogEstimator, ProcessedEstimator, SojournEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
@@ -23,6 +25,15 @@ val networkProcessed = ProcessedEstimator(networkName)
 val sim = Simulator(mm1, SimulatorArgs(100.0, CombinedNetworkQuery(List(networkSojourn, networkProcessed)), Map(server -> serverBacklog)))
 sim.simulate()
 
-networkSojourn.estimate
+val sojourn = networkSojourn.estimate.get match {
+  case ContinuousEstimation(_, dist) => dist
+}
 networkProcessed.estimate
 serverBacklog.estimate
+
+val f = Figure()
+val p = f.subplot(0)
+val x = for (i <- 0.0 to 4.0 by 0.1) yield i
+p += plot(x, for (t <- x) yield sojourn.unnormalizedPdf(t))
+
+f

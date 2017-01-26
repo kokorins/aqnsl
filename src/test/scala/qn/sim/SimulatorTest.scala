@@ -23,7 +23,7 @@ class SimulatorTest extends PropSpec with Matchers {
       case dist: ApacheContinuousDistribution => dist.mean should be(2 * 1 / (1 - 0.8) +- 0.1)
       case _ => fail()
     }
-    })
+    }).get
   }
 
   property("dd1 simulation with checks") {
@@ -34,7 +34,7 @@ class SimulatorTest extends PropSpec with Matchers {
       case dist: Singular => dist.value should be(10.0 +- 0.1)
       case _ => fail()
     }
-    })
+    }).get
   }
 
   property("Test from worksheet") {
