@@ -1,7 +1,7 @@
 import breeze.stats.distributions.Exponential
 import qn.Resource._
 import qn.distribution.Distribution
-import qn.monitor.{SojournMonitor, StationaryDistributionMonitor}
+import qn.monitor.{ContinuousEstimation, SojournMonitor, StationaryDistributionEstimation, StationaryDistributionMonitor}
 import qn.solver.Solver
 import qn.{NetworkTopology, Transition, _}
 
@@ -21,7 +21,7 @@ val downtime = result.results(stationaryDistNetwork).map({
   case StationaryDistributionEstimation(_, discreteDistribution) => discreteDistribution(0)
 })
 val sojourn = result.results(sojournMonitor).map({
-  case SojournEstimation(_, distribution) => distribution match {
+  case ContinuousEstimation(_, distribution) => distribution match {
     case exp: Exponential => exp.mean
   }
 })

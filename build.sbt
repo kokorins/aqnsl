@@ -5,15 +5,15 @@ version := "1.0"
 scalaVersion := "2.11.8"
 
 libraryDependencies  ++= Seq(
-  "org.scalanlp" %% "breeze" % "0.12",
-  "org.scalanlp" %% "breeze-natives" % "0.12",
-  "org.scalanlp" %% "breeze-viz" % "0.12",
+  "org.scalanlp" %% "breeze" % "0.13",
+  "org.scalanlp" %% "breeze-natives" % "0.13",
+  "org.scalanlp" %% "breeze-viz" % "0.13",
   "com.typesafe.play" %% "play-json" % "2.5.3",
-  "com.typesafe.akka" %% "akka-actor" % "2.4.6",
   "ch.qos.logback" %  "logback-classic" % "1.1.7",
-  "com.typesafe.scala-logging" %% "scala-logging" % "3.4.0",
-  "org.scalatest" % "scalatest_2.11" % "2.2.6" % "test",
-  "org.scalacheck" %% "scalacheck" % "1.13.2" % "test"
+  "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
+  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
+  "com.google.guava" % "guava" % "20.0"
 )
 
 resolvers ++= Seq(

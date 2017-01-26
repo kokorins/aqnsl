@@ -1,94 +1,129 @@
 package qn.sim
 
 import breeze.stats.distributions.ContinuousDistr
-import qn.Network
+import com.typesafe.scalalogging.Logger
 import qn.monitor.{Estimation, Monitor}
-import qn.solver.Result
+import qn.sim.network._
+import qn.util.ImmutableBiMap
+import qn.{Network, NetworkTopology, Resource}
 
 import scala.collection.mutable
 import scala.util.Try
 
-case class SimulatorArgs(stopAt: Double)
+case class SimulatorArgs(stopAt: Double, networkQuery: NetworkQuery = EmptyNetworkQuery, nodeQueries: Map[Resource, NodeQuery] = Map().withDefaultValue(EmptyNodeQuery))
 
 trait Entity {
-  def receive(event: ScheduledEvent): Seq[ScheduledEvent]
+  def receive(event: ScheduledCommand): Seq[ScheduledCommand]
+}
 
+trait ResultEntity extends Entity {
   def results: Map[Monitor, Try[Estimation]]
-
-  def warnings: Map[Monitor, String]
 }
 
-trait EstimationAppender {
-  def estimator: Try[Estimation]
-
-  def warnings: String
+trait Estimator {
+  def estimate: Try[Estimation]
 }
 
-case class GeneratorEntity(distribution: ContinuousDistr[Double], monitors: Map[Monitor, EstimationAppender]) extends Entity {
+case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, Estimator]) extends Entity {
   private def generateNextOrder(time:Double): (Order, Double) = {
-    (new Order() {}, distribution.draw() + time)
+    (new Order(GeneratorEntity.nextId()) {}, distribution.draw() + time)
   }
-  override def receive(event: ScheduledEvent): Seq[ScheduledEvent] = event match {
 
-
-    case ScheduledEvent(StartEvent, _, time) =>
+  override def receive(event: ScheduledCommand): Seq[ScheduledCommand] = event match {
+    case ScheduledCommand(StartSimulatorCommand, _, _, now) =>
+      val (nextOrder, timeStamp) = generateNextOrder(now)
+      Seq(ScheduledCommand(GenerateSimulatorCommand(nextOrder), Option(this), this :: receivers, timeStamp))
+    case ScheduledCommand(GenerateSimulatorCommand(_), _, _, time) =>
       val (nextOrder, timeStamp) = generateNextOrder(time)
-      Seq(ScheduledEvent(GenerateEvent(nextOrder), Option(this), time + time))
-    case ScheduledEvent(GenerateEvent(order), sender, time) =>
+      Seq(ScheduledCommand(GenerateSimulatorCommand(nextOrder), Option(this), this :: receivers, timeStamp))
     case _ => Seq()
   }
 
-  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimator)
-
-  override def warnings: Map[Monitor, String] = monitors.mapValues(_.warnings)
+//  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
 
-trait Order
+object GeneratorEntity {
+  var orderId: Int = 0
 
-trait Event
+  def nextId(): Int = {
+    orderId += 1
+    orderId
+  }
+}
 
-case object StartEvent extends Event
+case class Order(id: Int)
 
-case object EndEvent extends Event
+sealed trait SimulatorCommand
 
-case class GenerateEvent(order: Order) extends Event
+case object StartSimulatorCommand extends SimulatorCommand
 
-case class ScheduledEvent(event: Event, sender: Option[Entity], time: Double)
+case object EndSimulatorCommand extends SimulatorCommand
 
-case class SimulatorState(next: ScheduledEvent, events: mutable.PriorityQueue[ScheduledEvent]) {
+case class GenerateSimulatorCommand(order: Order) extends SimulatorCommand
+
+case class EnterSimulatorCommand(order: Order) extends SimulatorCommand
+
+case class ProcessedSimulatorCommand(order: Order) extends SimulatorCommand
+
+case class ScheduledCommand(event: SimulatorCommand, sender: Option[Entity], receivers: List[Entity], time: Double) {
+  override def toString: String = {
+    s"$event: %.2f".format(time)
+  }
+}
+
+object ScheduledCommand {
+  implicit def orderingByName[A <: ScheduledCommand]: Ordering[A] = Ordering.by(e => e.time)
+}
+
+case class SimulatorState(next: ScheduledCommand, events: mutable.PriorityQueue[ScheduledCommand]) {
   def isStop: Boolean = next.event match {
-    case EndEvent => true
+    case EndSimulatorCommand => true
     case _ => false
   }
 }
 
-case class Simulator(entities: Seq[Entity], args: SimulatorArgs) {
-  def simulate(): Try[Result] = Try {
-    var state = init(entities, args)
+case class Simulator(entities: List[Entity], sources: List[Entity], args: SimulatorArgs) {
+//  private val logger = Logger[Simulator]
+  def simulate(): Try[Unit] = Try {
+    var state = init(entities, sources, args)
+//    logger.info(state.toString)
     while(!state.isStop) {
       state = triggerNext(state)
+//      logger.info(state.toString)
     }
-    entities.foldLeft(Result(Map(), Map()))((lhs, rhs) => {
-      lhs.copy(lhs.results ++ rhs.results, lhs.warnings ++ rhs.warnings)
-    })
   }
 
-  def triggerNext(state: SimulatorState) = {
-    state.events.enqueue(entities.flatMap(_.receive(state.next)): _*)
-    val next = state.events.dequeue
-    SimulatorState(next, state.events)
+  def triggerNext(state: SimulatorState): SimulatorState = {
+    state.events.enqueue(state.next.receivers.flatMap(_.receive(state.next)): _*)
+    if (state.events.isEmpty)
+      SimulatorState(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), state.next.time), state.events)
+    else {
+      val next = state.events.dequeue
+      SimulatorState(next, state.events)
+    }
   }
 
-
-  def init(entities: Seq[Entity], simulatorArgs: SimulatorArgs): SimulatorState = {
-    val queue = mutable.PriorityQueue.newBuilder[ScheduledEvent](Ordering.by(_.time))
-    queue.enqueue(ScheduledEvent(EndEvent, Option.empty, simulatorArgs.stopAt))
-    SimulatorState(ScheduledEvent(StartEvent, Option.empty, 0), queue)
+  def init(entities: List[Entity], sources: List[Entity], simulatorArgs: SimulatorArgs): SimulatorState = {
+    val queue = mutable.PriorityQueue.newBuilder[ScheduledCommand](Ordering.by(-_.time))
+    queue.enqueue(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), simulatorArgs.stopAt))
+    SimulatorState(ScheduledCommand(StartSimulatorCommand, Option.empty, sources, 0), queue)
   }
 }
 
 object Simulator {
-  def apply(network: Network, args: SimulatorArgs) = {
-
+  def apply(network: Network, args: SimulatorArgs): Simulator = {
+    val entities = network.generators.flatMap(orderStream => {
+      orderStream.trajectory match {
+        case nt: NetworkTopology =>
+          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List()), args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
+          val networkEntity = NetworkEntity(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
+          val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
+          List(networkEntity, generatorEntity) ++ nodeEntities.values
+      }
+    })
+    Simulator(entities, entities.filter(_ match {
+      case GeneratorEntity(_, _, _) => true
+      case _ => false
+    }), args)
   }
 }

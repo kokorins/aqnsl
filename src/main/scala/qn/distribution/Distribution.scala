@@ -119,9 +119,10 @@ case class Singular(value: Double)(implicit rand: RandBasis = Rand) extends Disc
 }
 
 case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis = Rand) extends DiscreteDistr[Double] with Moments[Double, Double] {
+
   override def probabilityOf(x: Double): Double = if (values.size <= 0) 0 else values.count(_ < x) / values.size
 
-  override def draw(): Double = values(rand.randInt(values.size).draw())
+  override def draw(): Double = values(rand.randInt(values.size).draw()).toDouble
 
   override def mean: Double = breeze.stats.mean(values)
 
