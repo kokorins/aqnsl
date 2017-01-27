@@ -12,7 +12,7 @@ object WarehouseModel {
   import Resource._
 
   private val slowPickLaneName = "Slow Pick Lane"
-  private val bufferZone = "Buffer Zone"
+  private val bufferZoneName = "Buffer Zone"
   private val slowSortLaneName = "Slow Sort"
   val slowPackLaneName = "Slow Pack Lane"
 
@@ -20,7 +20,7 @@ object WarehouseModel {
     val fastPickLaneName = "Fast Pick Lane"
     val fastPick = Resource(fastPickLaneName, 8).add(StationaryDistributionMonitor(fastPickLaneName)).add(SojournMonitor(fastPickLaneName))
     val slowPick = Resource(slowPickLaneName, 20).add(StationaryDistributionMonitor(slowPickLaneName)).add(SojournMonitor(slowPickLaneName))
-    val buffer = Resource(bufferZone, 1000).add(StationaryDistributionMonitor(bufferZone)).add(SojournMonitor(bufferZone))
+    val buffer = Resource(bufferZoneName, 1000).add(StationaryDistributionMonitor(bufferZoneName)).add(SojournMonitor(bufferZoneName))
     val slowSort = Resource(slowSortLaneName, 8).add(StationaryDistributionMonitor(slowSortLaneName)).add(SojournMonitor(slowSortLaneName))
 
     val slowPack = Resource(slowPackLaneName, 8).add(StationaryDistributionMonitor(slowPackLaneName)).add(SojournMonitor(slowPackLaneName))
@@ -105,25 +105,25 @@ object WarehouseModel {
 
   def onlySlow(): Unit = {
     val slowPick = Resource(slowPickLaneName, 20).add(StationaryDistributionMonitor(slowPickLaneName)).add(SojournMonitor(slowPickLaneName))
-    val bufferZone = Resource(bufferZone, 1000).add(StationaryDistributionMonitor(bufferZone)).add(SojournMonitor(bufferZone))
+    val buffer = Resource(bufferZoneName, 1000).add(StationaryDistributionMonitor(bufferZoneName)).add(SojournMonitor(bufferZoneName))
     val slowSort = Resource(slowSortLaneName, 8).add(StationaryDistributionMonitor(slowSortLaneName)).add(SojournMonitor(slowSortLaneName))
     val slowPack = Resource(slowPackLaneName, 8).add(StationaryDistributionMonitor(slowPackLaneName)).add(SojournMonitor(slowPackLaneName))
     val sojournMonitor = SojournMonitor("Sojourn Network")
     val warehouse = Network("Warehouse Network")
       .add(slowPick)
-      .add(bufferZone)
+      .add(buffer)
       .add(slowSort)
       .add(slowPack)
       .add(OrdersStream("Orders", Distribution.exp(80), NetworkTopology()
         .addTransition(source, slowPick)
-        .addTransition(slowPick, bufferZone)
-        .addShares(bufferZone, slowPack -> 0.3, slowSort -> 0.7)
+        .addTransition(slowPick, buffer)
+        .addShares(buffer, slowPack -> 0.3, slowSort -> 0.7)
         .addTransition(slowSort, slowPack)
         .addTransition(slowPack, sink)
         .addService(slowPick, Distribution.exp(10))
         .addService(slowSort, Distribution.exp(8))
         .addService(slowPack, Distribution.exp(12))
-        .addService(bufferZone, Distribution.exp(5))
+        .addService(buffer, Distribution.exp(5))
       ))
       .add(sojournMonitor)
 
