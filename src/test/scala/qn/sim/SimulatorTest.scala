@@ -14,6 +14,7 @@ import scala.collection.mutable
 
 class SimulatorTest extends PropSpec with Matchers {
   implicit val doubleEq = TolerantNumerics.tolerantDoubleEquality(0.01)
+
   property("mm1 simulation") {
     val networkSojourn = SojournEstimator("Network")
     val result = Simulator(Models.mm1_08, SimulatorArgs(10.0, networkSojourn)).simulate()

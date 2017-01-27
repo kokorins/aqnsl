@@ -83,17 +83,16 @@ case class SimulatorState(next: ScheduledCommand, events: mutable.PriorityQueue[
 }
 
 case class Simulator(entities: List[Entity], sources: List[Entity], args: SimulatorArgs) {
-//  private val logger = Logger[Simulator]
+  private val logger = Logger[Simulator]
   def simulate(): Try[Unit] = Try {
     var state = init(entities, sources, args)
-//    logger.info(state.toString)
     while(!state.isStop) {
       state = triggerNext(state)
-//      logger.info(state.toString)
     }
   }
 
   def triggerNext(state: SimulatorState): SimulatorState = {
+    logger.info(state.next.toString)
     state.events.enqueue(state.next.receivers.flatMap(_.receive(state.next)): _*)
     if (state.events.isEmpty)
       SimulatorState(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), state.next.time), state.events)

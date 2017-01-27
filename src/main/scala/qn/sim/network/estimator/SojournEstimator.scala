@@ -42,7 +42,7 @@ case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], order
       sample += event.at - orderStarts(o)
     }
     for (o <- event.toQueue) {
-      sample += event.at - orderStarts(o)
+      orderStarts += o -> event.at
     }
     for (o <- event.toProcessing if !event.fromQueue.contains(o)) {
       orderStarts += o -> event.at
