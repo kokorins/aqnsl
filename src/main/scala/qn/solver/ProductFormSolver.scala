@@ -20,16 +20,13 @@ case class ProductFormSolver(network: Network) extends StrictLogging {
     val resourceRates = (DenseMatrix.eye[Double](incomingRates.activeSize) - transitionMatrix).t \ incomingRates
 
     // Lambda = (I-Q)^-1'.L
+    val loads: DenseVector[Double] = resourceRates /:/ serviceRates
 
-    //    val resourceRates = inv().t * incomingRates
-
-    val loads:DenseVector[Double] = resourceRates :/ serviceRates
-
-    if ((loads :>= 1.0).fold(false)(_ || _)) {
+    if ((loads >:= 1.0).fold(false)(_ || _)) {
       Try(throw new IllegalStateException("Network is overload: " + loads.toScalaVector().mkString(",")))
     }
     else {
-      Try(loads.toArray.toSeq.map(rho => Distribution.geom(1 - rho)))
+      Try(loads.toArray.map(rho => Distribution.geom(1-rho)).toSeq)
     }
   }
 

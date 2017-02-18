@@ -24,6 +24,8 @@ case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], order
       override protected val inner: AbstractRealDistribution = empiricalDistribution
 
       override def toString: String = s"${inner.getClass.getSimpleName}(mean: ${this.mean}, variance: ${this.variance})"
+
+      override def probability(x: Double, y: Double): Double = super.probability(x, y)
     })
     res
   }

@@ -71,11 +71,11 @@ object Distribution {
 
   def sum(distribution: Exponential, num: Integer) = erlang(distribution.rate, num)
 
-  def sumRandom(distribution: Exponential, num: Geometric) = exp(distribution.rate * num.p)
+  def sumRandom(distribution: Exponential, num: Geometric) = exp(num.mean *distribution.rate)
 
   def thinning(distribution: Exponential, prob: Double) = exp(distribution.rate * prob)
 
-  case class RichExponential(val exp: Exponential) extends Moments[Double, Double] with ContinuousDistr[Double] with HasLaplaceTransform {
+  case class RichExponential(exp: Exponential) extends Moments[Double, Double] with ContinuousDistr[Double] with HasLaplaceTransform with HasCdf {
     override def mean: Double = 1.0 / exp.rate
 
     override def variance: Double = 1.0 / (exp.rate * exp.rate)
@@ -95,6 +95,10 @@ object Distribution {
       val lambda = Number(exp.rate)
       LaplaceReprecentation(Fraction(lambda, Diff(lambda, t)))
     }
+
+    override def probability(x: Double, y: Double): Double = exp.probability(x, y)
+
+    override def cdf(x: Double): Double = exp.cdf(x)
   }
 }
 
@@ -133,7 +137,7 @@ case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis =
   override def entropy: Double = ???
 }
 
-case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand) extends ContinuousDistr[Double] with Moments[Double, Double] {
+case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand) extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf {
   override def unnormalizedLogPdf(x: Double): Double = ???
 
   override def logNormalizer: Double = ???
@@ -150,4 +154,8 @@ case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit ran
   override def entropy: Double = ???
 
   override def draw(): Double = ???
+
+  override def probability(x: Double, y: Double): Double = ???
+
+  override def cdf(x: Double): Double = ???
 }

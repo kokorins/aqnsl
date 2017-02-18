@@ -11,6 +11,10 @@ import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver.ProductFormSolver
 
 object MM1Comparison {
+  val Gray = "109, 109, 109"
+  val LightGray = "191, 191, 191"
+  val Orange = "255, 105, 0"
+  val LightOrange = "254, 166, 101"
   def main(args: Array[String]): Unit = {
     val serverName = "Server"
     val serverSojournMonitor = SojournMonitor(serverName)
@@ -30,7 +34,6 @@ object MM1Comparison {
     val serverSojourn = SojournEstimator(serverName)
     val serverBacklog = BacklogEstimator(server)
     val res = Simulator(network, SimulatorArgs(10009, sojourn, Map(server -> CombinedNodeQuery(serverBacklog, serverSojourn)))).simulate()
-    res.get
 
     val serverBacklogDist = solution.get.results(serverBacklogMonitor).get match {
       case StationaryDistributionEstimation(_, sbd) => sbd
@@ -38,11 +41,10 @@ object MM1Comparison {
     val serverSojournDist = solution.get.results(serverSojournMonitor).get match {
       case ContinuousEstimation(_, continuousDistr) => continuousDistr
     }
-    println(serverBacklogDist)
     val sampledBacklog: DiscreteDistr[Int] = serverBacklog.estimate.get match {
       case DiscreteEstimation(_, sampleBacklog) => sampleBacklog
     }
-    val sampledSojourn: ContinuousDistr[Double] = serverSojourn.estimate.get match {
+    val sampledSojourn = serverSojourn.estimate.get match {
       case ContinuousEstimation(_, continuousDistr) => continuousDistr
     }
     val xs = 0 to 15
@@ -50,8 +52,8 @@ object MM1Comparison {
     val simulatedY = for (i <- xs) yield sampledBacklog.probabilityOf(i)
     val figure = Figure("MM1 Queueing System")
     val numberOfOrders = figure.subplot(0)
-    numberOfOrders += plot(xs.map(_.toDouble), analyticY, name = "Analytical")
-    numberOfOrders += plot(xs.map(_.toDouble), simulatedY, name = "Simulated")
+    numberOfOrders += plot(xs.map(_.toDouble), analyticY, name = "Analytical", colorcode = Gray)
+    numberOfOrders += plot(xs.map(_.toDouble), simulatedY, name = "Simulated", colorcode = Orange)
     numberOfOrders.title = "Number of Orders"
     numberOfOrders.xlabel = "Number of Orders"
     numberOfOrders.ylabel = "Estimated Probability"
@@ -59,13 +61,13 @@ object MM1Comparison {
     numberOfOrders.yaxis.setTickUnit(new NumberTickUnit(0.02))
     numberOfOrders.yaxis.setAutoRangeIncludesZero(true)
 
-    val ts = 0.0 to 7.0 by 0.1
-    val analyticX = for (i <- ts) yield serverSojournDist.pdf(i)
-    val simulatedX = for (i <- ts) yield sampledSojourn.pdf(i)
+    val ts = 0.0 to 13.0 by 0.5
+    val analyticX = for (i <- ts) yield serverSojournDist.probability(0, i.toDouble)
+    val simulatedX = for (i <- ts) yield sampledSojourn.probability(0, i.toDouble)
 
     val sojournPlot = figure.subplot(2, 1, 1)
-    sojournPlot += plot(ts, analyticX, name = "Analytical")
-    sojournPlot += plot(ts, simulatedX, name = "Simulated")
+    sojournPlot += plot(ts, analyticX, name = "Analytical", colorcode = Gray)
+    sojournPlot += plot(ts, simulatedX, name = "Simulated", colorcode = Orange)
 
     sojournPlot.title = "Sojourn Time"
     sojournPlot.xlabel = "Time Units"
@@ -73,6 +75,5 @@ object MM1Comparison {
     sojournPlot.legend = true
     sojournPlot.yaxis.setTickUnit(new NumberTickUnit(0.05))
     sojournPlot.yaxis.setAutoRangeIncludesZero(true)
-    figure
   }
 }
