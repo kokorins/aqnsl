@@ -1,9 +1,11 @@
 package qn.distribution
 
 import breeze.linalg.DenseVector
+import breeze.numerics.log
 import breeze.stats.distributions.{ContinuousDistr, HasCdf, HasInverseCdf, Moments, _}
 import galileo.environment.Environment
 import galileo.expr._
+import qn.util.NumericReverseLaplaceTransform
 
 case class LaplaceReprecentation(representation: Expr) {
   def moment(k: Int) = {
@@ -82,7 +84,7 @@ object Distribution {
 
     override def mode: Double = 0
 
-    override def entropy: Double = ???
+    override def entropy: Double = exp.entropy
 
     override def unnormalizedLogPdf(x: Double): Double = exp.unnormalizedLogPdf(x)
 
@@ -134,7 +136,7 @@ case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis =
 
   override def mode: Double = breeze.stats.mode(values).mode
 
-  override def entropy: Double = ???
+  override def entropy: Double = log(values.size)
 }
 
 case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand) extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf {
@@ -155,7 +157,7 @@ case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit ran
 
   override def draw(): Double = ???
 
-  override def probability(x: Double, y: Double): Double = ???
+  override def probability(x: Double, y: Double): Double = NumericReverseLaplaceTransform.stehProb(laplace.representation, y) - NumericReverseLaplaceTransform.stehProb(laplace.representation, x)
 
-  override def cdf(x: Double): Double = ???
+  override def cdf(x: Double): Double = NumericReverseLaplaceTransform.stehfestInverse(laplace.representation, x)
 }

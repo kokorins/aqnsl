@@ -1,7 +1,9 @@
 package qn
 
 import breeze.plot._
-import breeze.stats.distributions.{ContinuousDistr, DiscreteDistr}
+import breeze.stats.distributions.DiscreteDistr
+import galileo.environment.Environment
+import galileo.expr._
 import org.jfree.chart.axis.NumberTickUnit
 import qn.distribution.Distribution
 import qn.monitor._
@@ -9,31 +11,69 @@ import qn.sim.network.CombinedNodeQuery
 import qn.sim.network.estimator.{BacklogEstimator, SojournEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver.ProductFormSolver
+import qn.util.NumericReverseLaplaceTransform
+
+import scala.util.Try
 
 object MM1Comparison {
+
+  def main(args: Array[String]): Unit = mm1
+
   val Gray = "109, 109, 109"
   val LightGray = "191, 191, 191"
   val Orange = "255, 105, 0"
   val LightOrange = "254, 166, 101"
-  def main(args: Array[String]): Unit = {
+
+  private def calcAt(func: Expr, t: Double) = {
+    val env = new Environment(Option.empty)
+    env.set("t", Number(t))
+    func.visit().visit(Option(env)).eval().doubleValue
+  }
+
+  def laplaceTransform() = {
+    val ts = 0.0 to 12.0 by 0.1
+    val exp = Diff(Number(1), Power(Number(math.E), Product(Number(-1), Variable("t"))))
+    val expDens = Product(Number(1), Power(Number(math.E), Product(Number(-1), Variable("t"))))
+    val lapExp = Fraction(Number(1), Diff(Number(1), Variable("t")))
+    val sinExp = Fraction(Number(1), Sum(Number(1), Power(Variable("t"), Number(2))))
+
+    val expected = for (t <- ts) yield calcAt(exp, t)
+    val dens = for (t <- ts) yield calcAt(expDens, t)
+    val actual = for (t <- ts) yield NumericReverseLaplaceTransform.stehfestInverse(sinExp, t, 14)
+    val actual2 = for (t <- ts) yield NumericReverseLaplaceTransform.stehfest2Inverse(sinExp, t, 14)
+//    val actual3 = for (t <- ts) yield NumericReverseLaplaceTransform.talbotInverse(sinExp, t, 6)
+    val figure = Figure("Laplace-Based Functions")
+    val laplacePlot = figure.subplot(0)
+    laplacePlot += plot(ts, expected, name = "Expected", colorcode = Gray)
+    laplacePlot += plot(ts, dens, name = "Density", colorcode = LightGray)
+    laplacePlot += plot(ts, actual, name = "Actual", colorcode = Orange)
+    laplacePlot += plot(ts, actual2, name = "Actual2", colorcode = LightOrange)
+//    laplacePlot += plot(ts, actual3, name = "Actual3", colorcode = LightOrange)
+    println(actual)
+    println(actual2)
+//    println(actual3)
+    laplacePlot.legend = true
+  }
+
+  private def mm1 = {
     val serverName = "Server"
     val serverSojournMonitor = SojournMonitor(serverName)
     val serverBacklogMonitor = StationaryDistributionMonitor(serverName)
     val server = Resource(serverName, 1)
-                 .add(serverSojournMonitor)
-                 .add(serverBacklogMonitor)
+      .add(serverSojournMonitor)
+      .add(serverBacklogMonitor)
     val networkName = "MM1"
     val networkSojournMonitor = SojournMonitor(networkName)
     val network = Network(networkName, Seq(server), monitors = List(networkSojournMonitor))
-                  .add(OrdersStream(networkName, Distribution.exp(0.8), NetworkTopology()
-                                                                        .addService(server, Distribution.exp(1.0))
-                                                                        .addTransition(Resource.source, server)
-                                                                        .addTransition(server, Resource.sink)))
+      .add(OrdersStream(networkName, Distribution.exp(0.8), NetworkTopology()
+        .addService(server, Distribution.exp(1.0))
+        .addTransition(Resource.source, server)
+        .addTransition(server, Resource.sink)))
     val solution = ProductFormSolver(network).solve()
     val sojourn = SojournEstimator(networkName)
     val serverSojourn = SojournEstimator(serverName)
     val serverBacklog = BacklogEstimator(server)
-    val res = Simulator(network, SimulatorArgs(10009, sojourn, Map(server -> CombinedNodeQuery(serverBacklog, serverSojourn)))).simulate()
+    val res = Simulator(network, SimulatorArgs(100009, sojourn, Map(server -> CombinedNodeQuery(serverBacklog, serverSojourn)))).simulate()
 
     val serverBacklogDist = solution.get.results(serverBacklogMonitor).get match {
       case StationaryDistributionEstimation(_, sbd) => sbd
@@ -41,11 +81,17 @@ object MM1Comparison {
     val serverSojournDist = solution.get.results(serverSojournMonitor).get match {
       case ContinuousEstimation(_, continuousDistr) => continuousDistr
     }
+    val netSojournDist = solution.get.results(networkSojournMonitor).get match {
+      case ContinuousEstimation(_, continuousDistr) => continuousDistr
+    }
     val sampledBacklog: DiscreteDistr[Int] = serverBacklog.estimate.get match {
       case DiscreteEstimation(_, sampleBacklog) => sampleBacklog
     }
     val sampledSojourn = serverSojourn.estimate.get match {
       case ContinuousEstimation(_, continuousDistr) => continuousDistr
+    }
+    val sampledNetSojourn = sojourn.estimate.get match {
+      case ContinuousEstimation(_, continuousDistribution) => continuousDistribution
     }
     val xs = 0 to 15
     val analyticY = for (i <- xs) yield serverBacklogDist.probabilityOf(i)
@@ -61,9 +107,9 @@ object MM1Comparison {
     numberOfOrders.yaxis.setTickUnit(new NumberTickUnit(0.02))
     numberOfOrders.yaxis.setAutoRangeIncludesZero(true)
 
-    val ts = 0.0 to 13.0 by 0.5
-    val analyticX = for (i <- ts) yield serverSojournDist.probability(0, i.toDouble)
-    val simulatedX = for (i <- ts) yield sampledSojourn.probability(0, i.toDouble)
+    val ts = 0.0 to 12.0 by 0.5
+    val analyticX = for (i <- ts) yield serverSojournDist.probability(0, i)
+    val simulatedX = for (i <- ts) yield Try(sampledSojourn.probability(0, i)).getOrElse(0.0)
 
     val sojournPlot = figure.subplot(2, 1, 1)
     sojournPlot += plot(ts, analyticX, name = "Analytical", colorcode = Gray)
@@ -75,5 +121,15 @@ object MM1Comparison {
     sojournPlot.legend = true
     sojournPlot.yaxis.setTickUnit(new NumberTickUnit(0.05))
     sojournPlot.yaxis.setAutoRangeIncludesZero(true)
+
+    val netSojournPlot = figure.subplot(3, 1, 2)
+    val netAnalyticX = for (i <- ts) yield netSojournDist.probability(0, i)
+    val netSimulatedX = for (i <- ts) yield Try(sampledNetSojourn.probability(0, i)).getOrElse(0.0)
+
+    println(netAnalyticX)
+    netSojournPlot += plot(ts, netAnalyticX, name = "Analytical", colorcode = Gray)
+    netSojournPlot += plot(ts, netSimulatedX, name = "Simulated", colorcode = Orange)
+
+    println(1 / netSojournDist.mean, sampledNetSojourn.mean)
   }
 }

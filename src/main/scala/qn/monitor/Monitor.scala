@@ -2,7 +2,7 @@ package qn.monitor
 
 import breeze.linalg
 import breeze.linalg.{DenseMatrix, DenseVector}
-import breeze.stats.distributions.{ContinuousDistr, DiscreteDistr, Geometric, HasCdf}
+import breeze.stats.distributions._
 import galileo.expr.Number
 import qn.distribution.Distribution.RichExponential
 import qn.distribution.{Distribution, HasLaplaceTransform, LaplaceBasedDistribution, LaplaceReprecentation}
@@ -87,5 +87,5 @@ case class SojournMonitor(name:String) extends Monitor {
 
 }
 
-case class ContinuousEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double] with HasCdf) extends Estimation
+case class ContinuousEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double] with HasCdf with Moments[Double, Double]) extends Estimation
 case class DiscreteEstimation(monitor: Monitor, discreteDistribution: DiscreteDistr[Int]) extends Estimation

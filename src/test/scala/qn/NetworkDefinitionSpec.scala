@@ -1,11 +1,13 @@
 package qn
 
+import galileo.expr.{Diff, Fraction, Number, Variable}
 import org.scalactic.TolerantNumerics
 import org.scalatest._
 import qn.distribution.LaplaceBasedDistribution
 import qn.model.Models
 import qn.monitor.ContinuousEstimation
 import qn.solver.ProductFormSolver
+import qn.util.NumericReverseLaplaceTransform
 
 class NetworkDefinitionSpec extends PropSpec with Matchers {
   implicit val doubleEq = TolerantNumerics.tolerantDoubleEquality(0.001)

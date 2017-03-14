@@ -1,6 +1,6 @@
 package qn.sim.network.estimator
 
-import breeze.stats.distributions.ApacheContinuousDistribution
+import breeze.stats.distributions.{ApacheContinuousDistribution, Moments}
 import com.typesafe.scalalogging.Logger
 import org.apache.commons.math3.distribution.AbstractRealDistribution
 import org.apache.commons.math3.random.EmpiricalDistribution
@@ -20,12 +20,14 @@ case class SojournEstimator(monitor: Monitor, sample: ArrayBuffer[Double], order
     val empiricalDistribution = new EmpiricalDistribution(sample.size / 5)
     empiricalDistribution.load(sample.toArray)
     logger.info(sample.toString())
-    val res = ContinuousEstimation(monitor, new ApacheContinuousDistribution {
+    val res = ContinuousEstimation(monitor, new ApacheContinuousDistribution with Moments[Double, Double] {
       override protected val inner: AbstractRealDistribution = empiricalDistribution
 
       override def toString: String = s"${inner.getClass.getSimpleName}(mean: ${this.mean}, variance: ${this.variance})"
 
-      override def probability(x: Double, y: Double): Double = super.probability(x, y)
+      override def entropy: Double = ???
+
+      override def mode: Double = ???
     })
     res
   }
