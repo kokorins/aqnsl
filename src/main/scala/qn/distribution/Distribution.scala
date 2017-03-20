@@ -104,7 +104,7 @@ object Distribution {
   }
 }
 
-case class Singular(value: Double)(implicit rand: RandBasis = Rand) extends DiscreteDistr[Double] with Moments[Double, Double] with ContinuousDistr[Double]{
+case class Singular(value: Double)(implicit rand: RandBasis = Rand) extends DiscreteDistr[Double] with Moments[Double, Double] with ContinuousDistr[Double] {
   override def probabilityOf(x: Double): Double = if (value == x) 1.0 else 0.0
 
   override def mean: Double = value
@@ -117,11 +117,11 @@ case class Singular(value: Double)(implicit rand: RandBasis = Rand) extends Disc
 
   override def draw(): Double = value
 
-  override def unnormalizedLogPdf(x: Double): Double = if(x<value) Double.NegativeInfinity else 0.0
+  override def apply(x: Double): Double = probabilityOf(x)
+
+  override def unnormalizedLogPdf(x: Double): Double = 0
 
   override def logNormalizer: Double = 1
-
-  override def apply(x: Double): Double = probabilityOf(x)
 }
 
 case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis = Rand) extends DiscreteDistr[Double] with Moments[Double, Double] {

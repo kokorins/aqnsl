@@ -88,4 +88,7 @@ case class SojournMonitor(name:String) extends Monitor {
 }
 
 case class ContinuousEstimation(monitor: Monitor, continuousDistribution: ContinuousDistr[Double] with HasCdf with Moments[Double, Double]) extends Estimation
+
 case class DiscreteEstimation(monitor: Monitor, discreteDistribution: DiscreteDistr[Int]) extends Estimation
+
+case class StatisticsEstimation(monitor: Monitor, stats: Moments[Double, Double]) extends Estimation
