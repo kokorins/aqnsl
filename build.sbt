@@ -2,18 +2,20 @@ name := "mgm"
 
 version := "1.0"
 
-scalaVersion := "2.11.8"
+scalaVersion := "2.12.1"
 
 libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze" % "0.13",
   "org.scalanlp" %% "breeze-natives" % "0.13",
   "org.scalanlp" %% "breeze-viz" % "0.13",
-  "com.typesafe.play" %% "play-json" % "2.5.3",
+  "com.typesafe.play" %% "play-json" % "2.6.0-M1",
   "ch.qos.logback" %  "logback-classic" % "1.1.7",
   "com.typesafe.scala-logging" %% "scala-logging" % "3.5.0",
-  "org.scalatest" %% "scalatest" % "2.2.6" % "test",
+  "org.scalatest" %% "scalatest" % "3.0.1" % "test",
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
-  "com.google.guava" % "guava" % "20.0"
+  "com.google.guava" % "guava" % "20.0",
+  "org.scala-graph" %% "graph-core" % "1.11.4",
+  "org.scala-graph" %% "graph-dot" % "1.11.0"
 )
 
 resolvers ++= Seq(
