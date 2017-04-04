@@ -34,7 +34,6 @@ object NetworkRepresentation {
         "t"))),
       DotAttrStmt(Elem.node, Seq(DotAttr("shape", "box"), DotAttr("style", "rounded,filled"), DotAttr("fillcolor",
         "\"#333333\""), DotAttr("fontcolor", "#ffffff"), DotAttr("fontname", "Droid Sans")))))
-
     def edgeTransformer(innerEdge: Graph[Resource, WDiEdge]#EdgeT):
     Option[(DotGraph, DotEdgeStmt)] = innerEdge.edge match {
       case w:WDiEdge[Resource] => {
