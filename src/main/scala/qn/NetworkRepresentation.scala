@@ -30,8 +30,10 @@ object NetworkRepresentation {
       .add(OrdersStream(networkName, Distribution.exp(0.8), networkGraph))
 
     val root = DotRootGraph(directed = true, Option(networkName), attrList = Seq(DotAttr("rankdir", "LR")), attrStmts = Seq(
-      DotAttrStmt(Elem.graph, Seq(DotAttr("fontname", "Helvetica"), DotAttr("fontsize", 36), DotAttr("labelloc", "t"))),
-      DotAttrStmt(Elem.node, Seq(DotAttr("shape", "box"), DotAttr("style", "rounded,filled"), DotAttr("fillcolor", "\"#333333\""), DotAttr("fontcolor", "#ffffff"), DotAttr("fontname", "Helvetica")))))
+      DotAttrStmt(Elem.graph, Seq(DotAttr("fontname", "Droid Sans"), DotAttr("fontsize", 36), DotAttr("labelloc",
+        "t"))),
+      DotAttrStmt(Elem.node, Seq(DotAttr("shape", "box"), DotAttr("style", "rounded,filled"), DotAttr("fillcolor",
+        "\"#333333\""), DotAttr("fontcolor", "#ffffff"), DotAttr("fontname", "Droid Sans")))))
 
     def edgeTransformer(innerEdge: Graph[Resource, WDiEdge]#EdgeT):
     Option[(DotGraph, DotEdgeStmt)] = innerEdge.edge match {
@@ -39,7 +41,10 @@ object NetworkRepresentation {
         val source = w._1.value
         val target = w._2.value
         val weight = 1.0 * w.weight / Long.MaxValue
-        Some((root, DotEdgeStmt(source.name, target.name, if(weight<1) List(DotAttr("label", weight)) else Nil)))
+        val attrs = Seq()
+        val weightAttr = if (weight < 1) Seq(DotAttr("label", weight)) else Nil
+
+        Some((root, DotEdgeStmt(source.name, target.name, attrs ++ weightAttr)))
       }
     }
 

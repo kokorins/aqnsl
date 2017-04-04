@@ -13,6 +13,7 @@ sealed trait Trajectory {
 
 case class Transition(from:Resource, to:Resource, share:Double)
 
+@Deprecated
 case class NetworkTopology(name:String = "", services:Map[Resource, ContinuousDistr[Double] with Moments[Double, Double]] = Map(), transitions: Set[Transition] = Set(), monitors:List[Monitor] = List()) extends Trajectory {
   override def add(monitor: Monitor): Trajectory = copy(monitors = monitor :: monitors)
 
