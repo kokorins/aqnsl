@@ -1,12 +1,8 @@
 package qn
 
 import qn.distribution.Distribution
+import qn.dot.DotTransformer
 import qn.monitor._
-
-import scalax.collection.Graph
-import scalax.collection.edge.WDiEdge
-import scalax.collection.io.dot._
-import scalax.collection.io.dot.implicits._
 
 object NetworkRepresentation {
 
@@ -21,33 +17,14 @@ object NetworkRepresentation {
       .add(serverSojournMonitor)
       .add(serverBacklogMonitor)
     val networkName = "MM1"
-    val networkSojournMonitor = SojournMonitor(networkName)
-    val networkGraph = NetworkGraph()
+//    val networkSojournMonitor = SojournMonitor(networkName)
+    val networkGraph = NetworkGraph(networkName)
       .addService(server, Distribution.exp(1.0))
       .addTransition(Resource.source, server)
       .addTransition(server, Resource.sink)
-    val network = Network(networkName, Seq(server), monitors = List(networkSojournMonitor))
-      .add(OrdersStream(networkName, Distribution.exp(0.8), networkGraph))
+//    val network = Network(networkName, Seq(server), monitors = List(networkSojournMonitor))
+//      .add(OrdersStream(networkName, Distribution.exp(0.8), networkGraph))
 
-    val root = DotRootGraph(directed = true, Option(networkName), attrList = Seq(DotAttr("rankdir", "LR")), attrStmts = Seq(
-      DotAttrStmt(Elem.graph, Seq(DotAttr("fontname", "Droid Sans"), DotAttr("fontsize", 36), DotAttr("labelloc",
-        "t"))),
-      DotAttrStmt(Elem.node, Seq(DotAttr("shape", "box"), DotAttr("style", "rounded,filled"), DotAttr("fillcolor",
-        "\"#333333\""), DotAttr("fontcolor", "#ffffff"), DotAttr("fontname", "Droid Sans")))))
-    def edgeTransformer(innerEdge: Graph[Resource, WDiEdge]#EdgeT):
-    Option[(DotGraph, DotEdgeStmt)] = innerEdge.edge match {
-      case w:WDiEdge[Resource] => {
-        val source = w._1.value
-        val target = w._2.value
-        val weight = 1.0 * w.weight / Long.MaxValue
-        val attrs = Seq()
-        val weightAttr = if (weight < 1) Seq(DotAttr("label", weight)) else Nil
-
-        Some((root, DotEdgeStmt(source.name, target.name, attrs ++ weightAttr)))
-      }
-    }
-
-    val dot = networkGraph.graph.toDot(root, edgeTransformer)
-    println(dot)
+    println(DotTransformer.toDot(networkGraph))
   }
 }

@@ -103,7 +103,7 @@ case class Simulator(entities: List[Entity], sources: List[Entity], args: Simula
   }
 
   def init(entities: List[Entity], sources: List[Entity], simulatorArgs: SimulatorArgs): SimulatorState = {
-    val queue = mutable.PriorityQueue.newBuilder[ScheduledCommand](Ordering.by(-_.time))
+    val queue = mutable.PriorityQueue.newBuilder[ScheduledCommand](Ordering.by(-_.time)).result()
     queue.enqueue(ScheduledCommand(EndSimulatorCommand, Option.empty, List(), simulatorArgs.stopAt))
     SimulatorState(ScheduledCommand(StartSimulatorCommand, Option.empty, sources, 0), queue)
   }
