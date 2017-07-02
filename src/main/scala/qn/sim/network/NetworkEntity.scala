@@ -3,7 +3,7 @@ package qn.sim.network
 import qn.distribution.Distribution
 import qn.sim._
 import qn.util.ImmutableBiMap
-import qn.{NetworkTopology, Resource, Transition}
+import qn.{NetworkGraph, NetworkTopology, Resource, Transition}
 
 import scala.collection.mutable
 
@@ -29,9 +29,9 @@ case class NetworkLogger(events: mutable.ArrayBuffer[NetworkStateEvent]) extends
 
 case class NetworkStructure(nodeEntities: ImmutableBiMap[Resource, NodeEntity])
 
-case class NetworkEntity(networkTopology: NetworkTopology, structure: NetworkStructure, networkQuery: NetworkQuery = EmptyNetworkQuery, var state: NetworkState = NetworkState(Set())) extends Entity {
-  val transitions: Map[Resource, Set[Transition]] = networkTopology.transitions.groupBy(_.from)
-
+case class NetworkEntity(transitions: Map[Resource, Set[Transition]], structure: NetworkStructure,
+                         networkQuery: NetworkQuery = EmptyNetworkQuery, var state: NetworkState = NetworkState(Set()))
+  extends Entity {
   override def receive(networkEvent: ScheduledCommand): Seq[ScheduledCommand] = networkEvent match {
     case ScheduledCommand(GenerateSimulatorCommand(order), _, _, at) =>
       val sources = transitions(Resource.source).toSeq
@@ -42,7 +42,7 @@ case class NetworkEntity(networkTopology: NetworkTopology, structure: NetworkStr
       networkQuery.append(event)
       Seq(ScheduledCommand(EnterSimulatorCommand(order), Option(this), List(to), at))
     case ScheduledCommand(ProcessedSimulatorCommand(order), Some(node:NodeEntity), _, at) =>
-      val fromResource:Resource = (structure.nodeEntities.inverse)(node) // intellij bug, withour brackets doesnt recognize implicit conversion
+      val fromResource:Resource = (structure.nodeEntities.inverse)(node) // intellij bug, without brackets doesnt recognize implicit conversion
       val nextNodes = transitions(fromResource).toSeq
       val dist = Distribution.multi(nextNodes.map(_.share): _*)
       val toResource = nextNodes(dist.draw()).to
@@ -59,5 +59,18 @@ case class NetworkEntity(networkTopology: NetworkTopology, structure: NetworkStr
         Seq(ScheduledCommand(EnterSimulatorCommand(order), Option(this), List(to), at))
       }
   }
+}
+
+object NetworkEntity {
+  def fromTopology(networkTopology: NetworkTopology, structure: NetworkStructure,
+                   networkQuery: NetworkQuery = EmptyNetworkQuery,
+                   state: NetworkState = NetworkState(Set())): NetworkEntity = new NetworkEntity(
+    networkTopology.transitions.groupBy(_.from), structure, networkQuery, state)
+
+  def fromGraph(networkGraph: NetworkGraph, structure: NetworkStructure,
+                networkQuery: NetworkQuery = EmptyNetworkQuery,
+                state: NetworkState = NetworkState(Set())): NetworkEntity = new NetworkEntity(
+    networkGraph.transitions.groupBy(_.from), structure, networkQuery, state)
+
 }
 

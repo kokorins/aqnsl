@@ -1,7 +1,7 @@
 package qn
 
 import qn.distribution.Distribution
-import qn.dot.DotTransformer
+import qn.dot.{DotConfig, DotTransformer}
 import qn.monitor._
 
 object NetworkRepresentation {
@@ -17,14 +17,13 @@ object NetworkRepresentation {
       .add(serverSojournMonitor)
       .add(serverBacklogMonitor)
     val networkName = "MM1"
-//    val networkSojournMonitor = SojournMonitor(networkName)
     val networkGraph = NetworkGraph(networkName)
       .addService(server, Distribution.exp(1.0))
       .addTransition(Resource.source, server)
       .addTransition(server, Resource.sink)
-//    val network = Network(networkName, Seq(server), monitors = List(networkSojournMonitor))
-//      .add(OrdersStream(networkName, Distribution.exp(0.8), networkGraph))
 
-    println(DotTransformer.toDot(networkGraph))
+    println(DotTransformer.toDot(networkGraph, new DotConfig(){
+      override def simple: Boolean = true
+    }))
   }
 }

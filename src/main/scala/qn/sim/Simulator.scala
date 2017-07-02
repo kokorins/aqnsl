@@ -5,7 +5,7 @@ import com.typesafe.scalalogging.Logger
 import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
 import qn.util.ImmutableBiMap
-import qn.{Network, NetworkTopology, Resource}
+import qn.{Network, NetworkGraph, NetworkTopology, Resource}
 
 import scala.collection.mutable
 import scala.util.Try
@@ -38,8 +38,6 @@ case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDist
       Seq(ScheduledCommand(GenerateSimulatorCommand(nextOrder), Option(this), this :: receivers, timeStamp))
     case _ => Seq()
   }
-
-//  override def results: Map[Monitor, Try[Estimation]] = monitors.mapValues(_.estimate)
 }
 
 object GeneratorEntity {
@@ -114,8 +112,17 @@ object Simulator {
     val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case nt: NetworkTopology =>
-          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._2, NodeState(List(), pair._1.numUnits, List()), args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
-          val networkEntity = NetworkEntity(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
+          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._1.name, pair._2, NodeState(List(), pair._1.numUnits, List()), args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
+          val networkEntity = NetworkEntity
+            .fromTopology(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
+          val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
+          List(networkEntity, generatorEntity) ++ nodeEntities.values
+        case ng: NetworkGraph =>
+          val nodeEntities = ng.services.map(pair => pair._1 ->
+            NodeEntity(pair._1.name, pair._2, NodeState(List(), pair._1.numUnits, List()),
+              args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
+          val networkEntity = NetworkEntity
+            .fromGraph(ng, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }

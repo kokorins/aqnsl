@@ -15,8 +15,8 @@ class NetworkEntityTest extends FunSuite with Matchers {
                    .addService(node, distr)
                    .addTransition(Resource.source, node)
                    .addTransition(node, Resource.sink)
-    val structure = NetworkStructure(ImmutableBiMap(Map(node -> NodeEntity(distr))))
-    val network = NetworkEntity(topology, state = NetworkState(Set()), structure = structure)
+    val structure = NetworkStructure(ImmutableBiMap(Map(node -> NodeEntity(node.name, distr))))
+    val network = NetworkEntity.fromTopology(topology, state = NetworkState(Set()), structure = structure)
     val send = network.receive(ScheduledCommand(GenerateSimulatorCommand(order), Option.empty, List(network), 0.0))
   }
 }

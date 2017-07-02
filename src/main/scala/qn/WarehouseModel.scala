@@ -1,35 +1,92 @@
 package qn
 
+import breeze.stats._
 import qn.distribution.{Distribution, LaplaceBasedDistribution}
-import qn.monitor.{ContinuousEstimation, SojournMonitor, StationaryDistributionEstimation, StationaryDistributionMonitor}
+import qn.dot.{DotConfig, DotTransformer}
+import qn.monitor._
+import qn.sim.network.CombinedNetworkQuery
+import qn.sim.network.estimator.SojournEstimator
+import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver.Solver
 
 import scala.util.Try
 
 object WarehouseModel {
 
+  def main(args: Array[String]): Unit = {
+    val networkGraph = warehouse()
+    println(DotTransformer.toDot(networkGraph, new DotConfig() {
+      override val showSource = true
+    }))
+
+    val network = Network("Warehouse Model", generators = List(OrdersStream("", Distribution.exp(0.8), networkGraph)))
+
+    val networkSojourn = SojournEstimator("Sojourn Time Sample")
+    val networkQuery = CombinedNetworkQuery(networkSojourn)
+    val simulator = Simulator(network, SimulatorArgs(100, networkQuery))
+    println(simulator.simulate())
+    println(
+      s"${networkSojourn.monitor.name} mean(stderr): ${mean(networkSojourn.sample)}(${stddev(networkSojourn.sample)})")
+  }
+
   import Distribution._
   import Resource._
 
-  private val slowPickLaneName = "Slow Pick Lane"
+  private val slowPickLaneName = "Slow Pick"
   private val bufferZoneName = "Buffer Zone"
   private val slowSortLaneName = "Slow Sort"
-  val slowPackLaneName = "Slow Pack Lane"
+  val slowPackLaneName = "Slow Pack"
+  val fastPickLaneName = "Fast Pick"
+  val fastPackName = "Fast Pack"
+  val slowPick = Resource(slowPickLaneName, 20).add(StationaryDistributionMonitor(slowPickLaneName))
+    .add(SojournMonitor(slowPickLaneName))
+  val slowSort = Resource(slowSortLaneName, 8).add(StationaryDistributionMonitor(slowSortLaneName))
+    .add(SojournMonitor(slowSortLaneName))
+  val slowPack = Resource(slowPackLaneName, 8).add(StationaryDistributionMonitor(slowPackLaneName))
+    .add(SojournMonitor(slowPackLaneName))
+  val fastPick = Resource(fastPickLaneName, 8).add(StationaryDistributionMonitor(fastPickLaneName))
+    .add(SojournMonitor(fastPickLaneName))
+
+  val fastPack = Resource(fastPackName, 4).add(StationaryDistributionMonitor(fastPackName))
+    .add(SojournMonitor(fastPackName))
+
+
+  def slowChainNetwork(): NetworkGraph = {
+    val networkName = "Slow Chain Network"
+    NetworkGraph(networkName)
+      .addService(slowPick, Distribution.exp(1))
+      .addService(slowSort, Distribution.exp(1))
+      .addService(slowPack, Distribution.exp(1))
+      .addTransition(Resource.source, slowPick)
+      .addTransition(slowPick, slowSort)
+      .addTransition(slowSort, slowPack)
+      .addTransition(slowPack, Resource.sink)
+  }
+
+  def warehouse(): NetworkGraph = {
+    NetworkGraph("Warehouse model")
+      .addService(slowPick, Distribution.exp(1))
+      .addService(fastPick, Distribution.exp(1))
+      .addService(slowSort, Distribution.exp(1))
+      .addService(slowPack, Distribution.exp(1))
+      .addService(fastPack, Distribution.exp(1))
+      .addShares(Resource.source, (slowPick, 0.9), (fastPick, 0.1))
+      .addShares(slowPick, (slowSort, 0.6), (fastPick, 0.4))
+      .addTransition(slowSort, slowPack)
+      .addShares(fastPick, (fastPack, 0.9), (slowPick, 0.1))
+      .addTransition(fastPack, Resource.sink)
+      .addTransition(slowPack, Resource.sink)
+  }
+
 
   def slowAndFast(): Unit = {
-    val fastPickLaneName = "Fast Pick Lane"
-    val fastPick = Resource(fastPickLaneName, 8).add(StationaryDistributionMonitor(fastPickLaneName)).add(SojournMonitor(fastPickLaneName))
-    val slowPick = Resource(slowPickLaneName, 20).add(StationaryDistributionMonitor(slowPickLaneName)).add(SojournMonitor(slowPickLaneName))
-    val buffer = Resource(bufferZoneName, 1000).add(StationaryDistributionMonitor(bufferZoneName)).add(SojournMonitor(bufferZoneName))
-    val slowSort = Resource(slowSortLaneName, 8).add(StationaryDistributionMonitor(slowSortLaneName)).add(SojournMonitor(slowSortLaneName))
+    val buffer = Resource(bufferZoneName, 1000).add(StationaryDistributionMonitor(bufferZoneName)).add(SojournMonitor
+    (bufferZoneName))
 
-    val slowPack = Resource(slowPackLaneName, 8).add(StationaryDistributionMonitor(slowPackLaneName)).add(SojournMonitor(slowPackLaneName))
     val slowToFastName = "Slow to Fast"
     val slowToFast = Resource(slowToFastName, 2).add(StationaryDistributionMonitor(slowToFastName)).add(SojournMonitor(slowToFastName))
     val fastToSlowName = "Fast to Slow"
     val fastToSlow = Resource(fastToSlowName, 2).add(StationaryDistributionMonitor(fastToSlowName)).add(SojournMonitor(fastToSlowName))
-    val fastPackName = "Fast Pack"
-    val fastPack = Resource(fastPackName, 4).add(StationaryDistributionMonitor(fastPackName)).add(SojournMonitor(fastPackName))
     val sojournMonitor = SojournMonitor("Sojourn Network")
     val warehouse = Network("Warehouse Network")
                     .add(fastPick)
@@ -167,10 +224,5 @@ object WarehouseModel {
          resourceResult <- meanResponse
     ) println(s"The ${resourceResult._1} has been responded: ${resourceResult._2}")
 
-  }
-
-  def main(args: Array[String]): Unit = {
-    slowAndFast()
-    onlySlow()
   }
 }
