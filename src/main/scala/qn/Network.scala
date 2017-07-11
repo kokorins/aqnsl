@@ -9,6 +9,7 @@ case class Network(name: String,
                    monitors: List[Monitor] = List()) {
   def add(resource: Resource): Network = Network(name, resources :+ resource, generators, monitors)
   def add(generator: OrdersStream): Network = Network(name, resources, generator :: generators, monitors)
+  @Deprecated
   def add(monitor: Monitor) = Network(name, resources, generators, monitor :: monitors)
 }
 

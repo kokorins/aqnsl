@@ -9,7 +9,7 @@ import qn.util.NumericReverseLaplaceTransform
 
 case class LaplaceReprecentation(representation: Expr) {
   def moment(k: Int) = {
-    derive(k).at(0)
+    math.pow(-1, k) * derive(k).at(0)
   }
 
   def derive(k: Int): LaplaceReprecentation = {
@@ -139,7 +139,8 @@ case class EmpiricDistribution(values: Array[Double])(implicit rand: RandBasis =
   override def entropy: Double = log(values.size)
 }
 
-case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand) extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf {
+case class LaplaceBasedDistribution(laplace: LaplaceReprecentation)(implicit rand: RandBasis = Rand)
+  extends ContinuousDistr[Double] with Moments[Double, Double] with HasCdf with HasLaplaceTransform {
   override def unnormalizedLogPdf(x: Double): Double = ???
 
   override def logNormalizer: Double = ???

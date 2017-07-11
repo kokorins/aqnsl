@@ -6,14 +6,32 @@ import com.typesafe.scalalogging.LazyLogging
 import qn._
 import qn.distribution.Distribution.RichExponential
 import qn.distribution.{Distribution, HasLaplaceTransform}
-import qn.util.ImmutableBiMap
+import qn.util.{ImmutableBiMap, SojournUtils}
 
+import scala.collection.mutable
 import scala.util.Try
 import scalax.collection.Graph
 import scalax.collection.edge.WDiEdge
 
 trait NetworkProductQuery {
   def calc(network: Network, stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): Unit
+}
+
+class DefaultQuerySet extends NetworkProductQuery {
+  private val nodeStationaryQuery: mutable.Map[Resource, NodeStationProductQuery] = mutable.Map()
+  private val networkSojournQuery = NetworkSojournProductQuery()
+  override def calc(network: Network, stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): Unit = {
+    networkSojournQuery.calc(network, stationaryDistribution)
+    stationaryDistribution.keySet.foreach(r => {
+      val query = NodeStationProductQuery(r)
+      query.calc(network, stationaryDistribution)
+      nodeStationaryQuery += r -> query
+    })
+  }
+
+  def nodesStationary: Map[Resource, DiscreteDistr[Int]] = nodeStationaryQuery
+    .flatMap({ case (r, q) => q.distr.map(d => r -> d) })(collection.breakOut)
+  def networkSojourn = networkSojournQuery.distr
 }
 
 case class CombinedNetworkProductQuery(networkProductQueries: Seq[NetworkProductQuery]) extends NetworkProductQuery {
@@ -46,6 +64,36 @@ case class NodeSojournProductQuery(node: Resource,
       }
       case _ => throw new IllegalStateException("Service distribution is only exponential")
     })
+  }
+}
+
+case class NetworkSojournProductQuery(var distr: Option[Moments[Double, Double] with ContinuousDistr[Double] with
+  HasLaplaceTransform with HasCdf] = None) extends NetworkProductQuery {
+  override def calc(network: Network, stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): Unit = {
+    val nodeSojourns = network.resources.map(res => {
+      val query = NodeSojournProductQuery(res)
+      query.calc(network, stationaryDistribution)
+      query.distr
+    }).flatten
+
+    val transitions = network.generators.head.trajectory.transitions
+    val resourceIdxs: Range = network.resources.indices
+    val sourceTransitions = transitions.filter(_.from == Resource.source)
+    val incomingProbs = DenseVector(
+      (for (idx <- resourceIdxs) yield sourceTransitions.find(_.to == network.resources(idx)).fold(0.0)(_.share))
+        .toArray)
+    val sinkTransitions = transitions.filter(_.to == Resource.sink)
+    val outgoingProbs = DenseVector(
+      (for (idx <- resourceIdxs) yield sinkTransitions.find(_.from == network.resources(idx)).fold(0.0)(_.share))
+        .toArray)
+    val transitionMatrix = DenseMatrix.zeros[Double](network.resources.size, network.resources.size)
+    for (i <- resourceIdxs; j <- resourceIdxs)
+      transitionMatrix.update(i, j,
+        transitions.find(trans => trans.from == network.resources(i) && trans.to == network.resources(j))
+          .fold(0.0)(_.share))
+
+    distr = Option(SojournUtils.laplace(incomingProbs, outgoingProbs, transitionMatrix,
+      nodeSojourns.map({ case distr: HasLaplaceTransform => distr.laplace })))
   }
 }
 
