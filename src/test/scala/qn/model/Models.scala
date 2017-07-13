@@ -9,7 +9,6 @@ object Models {
   private val node1: Resource = Resource("Service unit 1", 1).add(stationaryDistribution)
   private val node2: Resource = Resource("Service unit 2", 1).add(stationaryDistribution)
   private val node3: Resource = Resource("Service unit 3", 1).add(stationaryDistribution)
-  //  val networkSojourn: SojournMonitor = SojournMonitor("Network Sojourn")
   val dd1 = Network("DD1")
             .add(node1)
             .add(OrdersStream("Fixed Input, Instant Output", Distribution.deterministic(1.0), NetworkTopology()
@@ -23,7 +22,6 @@ object Models {
       .addTransition(Resource.source, node1)
       .addTransition(node1, Resource.sink)
       .addService(node1, Distribution.exp(1.0))))
-  //    .add(networkSojourn)
 
   val mm1mm1 = Network("MM1->MM1")
     .add(node1)
@@ -34,7 +32,6 @@ object Models {
       .addTransition(node2, Resource.sink)
       .addService(node1, Distribution.exp(1.0))
       .addService(node2, Distribution.exp(1.0))))
-//    .add(networkSojourn)
 
   val mm1ormm1 = Network("MM1 or MM1")
     .add(node1)
@@ -45,7 +42,6 @@ object Models {
       .addTransition(node2, Resource.sink)
       .addService(node1, Distribution.exp(.5))
       .addService(node2, Distribution.exp(.5))))
-//    .add(networkSojourn)
 
   val mm1mm1mm1 = Network("MM1->MM1->MM1")
     .add(node1)
@@ -59,5 +55,4 @@ object Models {
       .addService(node1, Distribution.exp(2))
       .addService(node2, Distribution.exp(1))
       .addService(node3, Distribution.exp(3))))
-//    .add(networkSojourn)
 }

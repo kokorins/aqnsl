@@ -11,11 +11,8 @@ object NetworkRepresentation {
   private def networkRepresentation = {
 
     val serverName = "Server"
-//    val serverSojournMonitor = SojournMonitor(serverName)
     val serverBacklogMonitor = StationaryDistributionMonitor(serverName)
-    val server = Resource(serverName, 1)
-//      .add(serverSojournMonitor)
-      .add(serverBacklogMonitor)
+    val server = Resource(serverName, 1).add(serverBacklogMonitor)
     val networkName = "MM1"
     val networkGraph = NetworkGraph(networkName)
       .addService(server, Distribution.exp(1.0))
