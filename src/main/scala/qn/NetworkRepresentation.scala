@@ -2,7 +2,6 @@ package qn
 
 import qn.distribution.Distribution
 import qn.dot.{DotConfig, DotTransformer}
-import qn.monitor._
 
 object NetworkRepresentation {
 
@@ -11,8 +10,7 @@ object NetworkRepresentation {
   private def networkRepresentation = {
 
     val serverName = "Server"
-    val serverBacklogMonitor = StationaryDistributionMonitor(serverName)
-    val server = Resource(serverName, 1).add(serverBacklogMonitor)
+    val server = Resource(serverName, 1)
     val networkName = "MM1"
     val networkGraph = NetworkGraph(networkName)
       .addService(server, Distribution.exp(1.0))

@@ -6,9 +6,8 @@ import org.scalatest.{Matchers, PropSpec}
 import qn.Resource.{sink, source}
 import qn.distribution.{Distribution, LaplaceBasedDistribution, Singular}
 import qn.model.Models
-import qn.monitor.{ContinuousEstimation, DiscreteEstimation}
 import qn.sim.network.estimator.{BacklogEstimator, ProcessedEstimator, SojournEstimator}
-import qn.{Network, NetworkTopology, OrdersStream, Resource}
+import qn._
 
 import scala.collection.mutable
 
@@ -19,11 +18,10 @@ class SimulatorTest extends PropSpec with Matchers {
     val networkSojourn = SojournEstimator("Network")
     val result = Simulator(Models.mm1_08, SimulatorArgs(10.0, networkSojourn)).simulate()
     result.isSuccess should be(true)
-    networkSojourn.estimate.map({ case ContinuousEstimation(_, distr) => distr match {
+    networkSojourn.estimate.map({
       case dist: LaplaceBasedDistribution => dist.mean should be(2 * 1 / (1 - 0.8))
       case dist: ApacheContinuousDistribution => dist.mean should be(2 * 1 / (1 - 0.8) +- 0.1)
       case _ => fail()
-    }
     }).get
   }
 
@@ -31,10 +29,9 @@ class SimulatorTest extends PropSpec with Matchers {
     val processed = ProcessedEstimator("Network")
     val result = Simulator(Models.dd1, SimulatorArgs(10.5, processed)).simulate()
     result.isSuccess should be(true)
-    processed.estimate.map({ case ContinuousEstimation(_, distr) => distr match {
+    processed.estimate.map({
       case dist: Singular => dist.value should be(10.0 +- 0.1)
       case _ => fail()
-    }
     }).get
   }
 
@@ -46,7 +43,7 @@ class SimulatorTest extends PropSpec with Matchers {
     val mm1 = Network(networkName)
               .add(server)
               .add(OrdersStream(networkName, Distribution.exp(rate),
-                NetworkTopology()
+                NetworkGraph()
                 .addTransition(source, server)
                 .addTransition(server, sink)
                 .addService(server, Distribution.exp(1.0))
@@ -58,15 +55,13 @@ class SimulatorTest extends PropSpec with Matchers {
     val sim = Simulator(mm1, SimulatorArgs(stopAt, networkProcessed, Map(server -> nodeBacklog)))
     sim.simulate()
 
-    nodeBacklog.estimate.map({ case DiscreteEstimation(_, distr) => distr match {
+    nodeBacklog.estimate.map({
       case dist: ApacheDiscreteDistribution => dist.probabilityOf(0) should be (0.2 +- 0.1)
       case _ => fail()
-    }
     }).get
-    networkProcessed.estimate.map({ case ContinuousEstimation(_, distr) => distr match {
+    networkProcessed.estimate.map({
       case dist: Singular => dist.value should be(stopAt * rate +-.1 * (stopAt * rate))
       case _ => fail()
-    }
     }).get
   }
 

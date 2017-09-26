@@ -3,7 +3,6 @@ package qn
 import breeze.stats._
 import qn.distribution.Distribution
 import qn.dot.{DotConfig, DotTransformer}
-import qn.monitor._
 import qn.sim.network.CombinedNetworkQuery
 import qn.sim.network.estimator.{SojournEstimator, SojournMomentsEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
@@ -28,9 +27,9 @@ object WarehouseModel {
     ProductFormSolver(network, ProductFormSolverArgs(prodResults)).solve()
     println(simulator.simulate())
     println(
-      s"${networkSojourn.monitor.name} mean(var): ${mean(networkSojourn.sample)}(${variance(networkSojourn.sample)})")
+      s"${networkSojourn.name} mean(var): ${mean(networkSojourn.sample)}(${variance(networkSojourn.sample)})")
     println(
-      s"${networkMomSojourn.monitor.name} mean(var): ${networkMomSojourn.adder.mean}(${networkMomSojourn.adder.v})")
+      s"${networkMomSojourn.name} mean(var): ${networkMomSojourn.adder.mean}(${networkMomSojourn.adder.v})")
     println(s"${fastPick.name} stationary distribution: ${prodResults.nodesStationary(fastPick)}")
     println(s"Network sojourn mean: ${prodResults.networkSojourn.map(_.mean)}")
   }
@@ -40,11 +39,11 @@ object WarehouseModel {
   val slowPackLaneName = "Slow Pack"
   val fastPickLaneName = "Fast Pick"
   val fastPackName = "Fast Pack"
-  val slowPick = Resource(slowPickLaneName, 20).add(StationaryDistributionMonitor(slowPickLaneName))
-  val slowSort = Resource(slowSortLaneName, 8).add(StationaryDistributionMonitor(slowSortLaneName))
-  val slowPack = Resource(slowPackLaneName, 8).add(StationaryDistributionMonitor(slowPackLaneName))
-  val fastPick = Resource(fastPickLaneName, 8).add(StationaryDistributionMonitor(fastPickLaneName))
-  val fastPack = Resource(fastPackName, 4).add(StationaryDistributionMonitor(fastPackName))
+  val slowPick = Resource(slowPickLaneName, 20)
+  val slowSort = Resource(slowSortLaneName, 8)
+  val slowPack = Resource(slowPackLaneName, 8)
+  val fastPick = Resource(fastPickLaneName, 8)
+  val fastPack = Resource(fastPackName, 4)
 
 
   def slowChainNetwork(): NetworkGraph = {

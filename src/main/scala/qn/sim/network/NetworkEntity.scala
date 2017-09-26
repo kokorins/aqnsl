@@ -3,7 +3,7 @@ package qn.sim.network
 import qn.distribution.Distribution
 import qn.sim._
 import qn.util.ImmutableBiMap
-import qn.{NetworkGraph, NetworkTopology, Resource, Transition}
+import qn.{NetworkGraph, Resource, Transition}
 
 import scala.collection.mutable
 
@@ -62,11 +62,6 @@ case class NetworkEntity(transitions: Map[Resource, Set[Transition]], structure:
 }
 
 object NetworkEntity {
-  def fromTopology(networkTopology: NetworkTopology, structure: NetworkStructure,
-                   networkQuery: NetworkQuery = EmptyNetworkQuery,
-                   state: NetworkState = NetworkState(Set())): NetworkEntity = new NetworkEntity(
-    networkTopology.transitions.groupBy(_.from), structure, networkQuery, state)
-
   def fromGraph(networkGraph: NetworkGraph, structure: NetworkStructure,
                 networkQuery: NetworkQuery = EmptyNetworkQuery,
                 state: NetworkState = NetworkState(Set())): NetworkEntity = new NetworkEntity(

@@ -18,17 +18,22 @@ trait NetworkProductQuery {
 }
 
 class DefaultQuerySet extends NetworkProductQuery {
-  private val nodeStationaryQuery: mutable.Map[Resource, NodeStationProductQuery] = mutable.Map()
+  private val nodeSojournQuery: mutable.Map[Resource, NodeSojournProductQuery] = mutable.Map.empty
+  private val nodeStationaryQuery: mutable.Map[Resource, NodeStationProductQuery] = mutable.Map.empty
   private val networkSojournQuery = NetworkSojournProductQuery()
   override def calc(network: Network, stationaryDistribution: Map[Resource, DiscreteDistr[Int]]): Unit = {
     networkSojournQuery.calc(network, stationaryDistribution)
     stationaryDistribution.keySet.foreach(r => {
-      val query = NodeStationProductQuery(r)
-      query.calc(network, stationaryDistribution)
-      nodeStationaryQuery += r -> query
+      val sojournQuery = NodeSojournProductQuery(r)
+      val stationaryQuery = NodeStationProductQuery(r)
+      stationaryQuery.calc(network, stationaryDistribution)
+      nodeStationaryQuery += r -> stationaryQuery
+      nodeSojournQuery += r -> sojournQuery
     })
   }
 
+  def nodesSojourn: Map[Resource, ContinuousDistr[Double] with HasCdf] = nodeSojournQuery
+    .flatMap({ case (r, q) => q.distr.map(d => r -> d) })(collection.breakOut)
   def nodesStationary: Map[Resource, DiscreteDistr[Int]] = nodeStationaryQuery
     .flatMap({ case (r, q) => q.distr.map(d => r -> d) })(collection.breakOut)
   def networkSojourn = networkSojournQuery.distr
@@ -54,7 +59,7 @@ case class NodeSojournProductQuery(node: Resource,
   override def calc(network: Network, stationaryDistributions: Map[Resource, DiscreteDistr[Int]]): Unit = {
     val stationaryDistribution = stationaryDistributions(node)
     val service = network.generators.head.trajectory match {
-      case NetworkGraph(_, services, _, _) => services(node)
+      case NetworkGraph(_, services, _) => services(node)
     }
 
     distr = Some(service match {
@@ -152,7 +157,7 @@ case class ProductFormSolver(network: Network, args: ProductFormSolverArgs) exte
       return Try(throw new IllegalStateException("There should be only one trajectory"))
     val generator: OrdersStream = network.generators.head
     generator.trajectory match {
-      case NetworkGraph(_, services, graph, _) =>
+      case NetworkGraph(_, services, graph) =>
         val stationaryDistributionTry = calcStationaryDistribution(generator, services, graph)
         stationaryDistributionTry
           .map(stationaryDistribution => args.networkProductQuery.calc(network, stationaryDistribution))

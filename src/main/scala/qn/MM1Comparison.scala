@@ -6,7 +6,6 @@ import galileo.environment.Environment
 import galileo.expr._
 import org.jfree.chart.axis.NumberTickUnit
 import qn.distribution.Distribution
-import qn.monitor._
 import qn.sim.network.CombinedNodeQuery
 import qn.sim.network.estimator.{BacklogEstimator, SojournEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
@@ -20,38 +19,30 @@ object MM1Comparison {
 
   private def mm1 = {
     val serverName = "Server"
-    val serverBacklogMonitor = StationaryDistributionMonitor(serverName)
     val server = Resource(serverName, 1)
     val networkName = "MM1"
     val network = Network(networkName, Seq(server))
-      .add(OrdersStream(networkName, Distribution.exp(0.8), NetworkTopology()
+      .add(OrdersStream(networkName, Distribution.exp(0.8), NetworkGraph()
         .addService(server, Distribution.exp(1.0))
         .addTransition(Resource.source, server)
         .addTransition(server, Resource.sink)))
     val query = new DefaultQuerySet()
-    val solution = ProductFormSolver(network, ProductFormSolverArgs(query)).solve()
+    ProductFormSolver(network, ProductFormSolverArgs(query)).solve()
     val sojourn = SojournEstimator(networkName)
     val serverSojourn = SojournEstimator(serverName)
     val serverBacklog = BacklogEstimator(server)
-    val res = Simulator(network,
-      SimulatorArgs(100009, sojourn, Map(server -> CombinedNodeQuery(serverBacklog, serverSojourn)))).simulate()
+    Simulator(network, SimulatorArgs(100009, sojourn, Map(server -> CombinedNodeQuery(serverBacklog, serverSojourn))))
+      .simulate()
 
     val serverBacklogDist = query.nodesStationary(server)
 
-//    val serverSojournDist = solution.get.results(serverSojournMonitor).get match {
-//      case ContinuousEstimation(_, continuousDistr) => continuousDistr
-//    }
-    val netSojournDist = query.networkSojourn
+    val serverSojournDist = query.nodesSojourn(server)
 
-    val sampledBacklog: DiscreteDistr[Int] = serverBacklog.estimate.get match {
-      case DiscreteEstimation(_, sampleBacklog) => sampleBacklog
-    }
-    val sampledSojourn = serverSojourn.estimate.get match {
-      case ContinuousEstimation(_, continuousDistr) => continuousDistr
-    }
-    val sampledNetSojourn = sojourn.estimate.get match {
-      case ContinuousEstimation(_, continuousDistribution) => continuousDistribution
-    }
+    val netSojournDist = query.networkSojourn.get
+
+    val sampledBacklog: DiscreteDistr[Int] = serverBacklog.estimate.get
+    val sampledSojourn = serverSojourn.estimate.get
+    val sampledNetSojourn = sojourn.estimate.get
     val xs = 0 to 15
     val analyticY = for (i <- xs) yield serverBacklogDist.probabilityOf(i)
     val simulatedY = for (i <- xs) yield sampledBacklog.probabilityOf(i)
@@ -67,11 +58,11 @@ object MM1Comparison {
     numberOfOrders.yaxis.setAutoRangeIncludesZero(true)
 
     val ts = 0.0 to 12.0 by 0.5
-//    val analyticX = for (i <- ts) yield serverSojournDist.probability(0, i)
+    val analyticX = for (i <- ts) yield serverSojournDist.probability(0, i)
     val simulatedX = for (i <- ts) yield Try(sampledSojourn.probability(0, i)).getOrElse(0.0)
 
     val sojournPlot = figure.subplot(2, 1, 1)
-//    sojournPlot += plot(ts, analyticX, name = "Analytical", colorcode = Gray)
+    sojournPlot += plot(ts, analyticX, name = "Analytical", colorcode = Gray)
     sojournPlot += plot(ts, simulatedX, name = "Simulated", colorcode = Orange)
 
     sojournPlot.title = "Sojourn Time"
@@ -82,14 +73,14 @@ object MM1Comparison {
     sojournPlot.yaxis.setAutoRangeIncludesZero(true)
 
     val netSojournPlot = figure.subplot(3, 1, 2)
-//    val netAnalyticX = for (i <- ts) yield netSojournDist.probability(0, i)
+    val netAnalyticX = for (i <- ts) yield netSojournDist.probability(0, i)
     val netSimulatedX = for (i <- ts) yield Try(sampledNetSojourn.probability(0, i)).getOrElse(0.0)
 
-//    println(netAnalyticX)
-//    netSojournPlot += plot(ts, netAnalyticX, name = "Analytical", colorcode = Gray)
+    println(netAnalyticX)
+    netSojournPlot += plot(ts, netAnalyticX, name = "Analytical", colorcode = Gray)
     netSojournPlot += plot(ts, netSimulatedX, name = "Simulated", colorcode = Orange)
 
-//    println(1 / netSojournDist.mean, sampledNetSojourn.mean)
+    println(1 / netSojournDist.mean, sampledNetSojourn.mean)
   }
 
   val Gray = "109, 109, 109"

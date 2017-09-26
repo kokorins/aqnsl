@@ -2,29 +2,23 @@ package qn.sim
 
 import breeze.stats.distributions.ContinuousDistr
 import com.typesafe.scalalogging.Logger
-import qn.monitor.{Estimation, Monitor}
 import qn.sim.network._
 import qn.util.ImmutableBiMap
-import qn.{Network, NetworkGraph, NetworkTopology, Resource}
+import qn.{Network, NetworkGraph, Resource}
 
 import scala.collection.mutable
 import scala.util.Try
 
-case class SimulatorArgs(stopAt: Double, networkQuery: NetworkQuery = EmptyNetworkQuery, nodeQueries: Map[Resource, NodeQuery] = Map().withDefaultValue(EmptyNodeQuery))
+case class SimulatorArgs(stopAt: Double, networkQuery: NetworkQuery = EmptyNetworkQuery,
+                         nodeQueries: Map[Resource, NodeQuery] = Map().withDefaultValue(EmptyNodeQuery))
 
 trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
 }
 
-trait ResultEntity extends Entity {
-  def results: Map[Monitor, Try[Estimation]]
-}
-
-trait Estimator {
-  def estimate: Try[Estimation]
-}
-
-case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double], monitors: Map[Monitor, Estimator]) extends Entity {
+case class GeneratorEntity(receivers: List[Entity],
+                           distribution: ContinuousDistr[Double] /*, monitors: Map[Monitor, Estimator]*/)
+  extends Entity {
   private def generateNextOrder(time:Double): (Order, Double) = {
     (new Order(GeneratorEntity.nextId()) {}, distribution.draw() + time)
   }
@@ -111,24 +105,18 @@ object Simulator {
   def apply(network: Network, args: SimulatorArgs): Simulator = {
     val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
-        case nt: NetworkTopology =>
-          val nodeEntities = nt.services.map(pair => pair._1 -> NodeEntity(pair._1.name, pair._2, NodeState(List(), pair._1.numUnits, List()), args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
-          val networkEntity = NetworkEntity
-            .fromTopology(nt, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
-          val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
-          List(networkEntity, generatorEntity) ++ nodeEntities.values
         case ng: NetworkGraph =>
           val nodeEntities = ng.services.map(pair => pair._1 ->
-            NodeEntity(pair._1.name, pair._2, NodeState(List(), pair._1.numUnits, List()),
-              args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
+            NodeEntity(pair._1.name, pair._2, state = NodeState(List(), pair._1.numUnits, List()),
+              nodeQuery = args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
           val networkEntity = NetworkEntity
             .fromGraph(ng, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
-          val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution, Map())
+          val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution)
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }
     })
     Simulator(entities, entities.filter(_ match {
-      case GeneratorEntity(_, _, _) => true
+      case GeneratorEntity(_, _) => true
       case _ => false
     }), args)
   }

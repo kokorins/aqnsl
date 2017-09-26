@@ -1,9 +1,9 @@
 package qn.dot
 
-import qn.{NetworkGraph, Resource}
+import qn.{Network, NetworkGraph, Resource}
 
 import scalax.collection.Graph
-import scalax.collection.edge.WDiEdge
+import scalax.collection.edge.{WDiEdge, WLkDiEdge}
 import scalax.collection.io.dot._
 import scalax.collection.io.dot.implicits._
 
@@ -29,13 +29,56 @@ trait DotConfig {
 }
 
 object DotTransformer {
-//  val queueAttr = Seq(DotAttr("style", "filled"))
-
   type NetworkRepr = Graph[Resource, WDiEdge]
+  type NetworksRepr = Graph[Resource, WLkDiEdge]
   type QueueNetworkRepr = Graph[String, WDiEdge]
   def queueName(node: String) = s"${node}_queue"
   def serverName(node: String) = s"${node}_server"
   def clusterName(node: String) = s"cluster_${node.replace("_queue", "").replace("_server", "")}"
+
+  def toDot(network: Network, conf: DotConfig): String = {
+    val root = DotRootGraph(directed = true, Option(network.name),
+      attrList = Seq(DotAttr("rankdir", "LR"), DotAttr("compound", "true")),
+      attrStmts = Seq(conf.graphAttrs(""), conf.nodeAttrs))
+
+    def simpleEdgeTransformer(innerEdge: NetworksRepr#EdgeT): Option[(DotGraph, DotEdgeStmt)] =
+      innerEdge.edge match {
+        case w: WLkDiEdge[Resource] => {
+          val source = w._1.value
+          val target = w._2.value
+          if (!conf.showSource) {
+            if (source == Resource.source || target == Resource.source) {
+              return None
+            }
+          }
+          if (!conf.showSink) {
+            if (source == Resource.sink || target == Resource.sink) {
+              return None
+            }
+          }
+
+          val weight = 1.0 * w.weight / Long.MaxValue
+          val label = w.label
+          val weightAttr = if (weight < 1) {
+            Seq(DotAttr("label", s"$weight  $label"), DotAttr("fillcolor", weight))
+          } else {
+            Nil
+          }
+          Some((root, DotEdgeStmt(source.name, target.name, Seq() ++ weightAttr)))
+        }
+      }
+
+    val sumGraph = network.generators.map(_.trajectory).map({
+      case graph: NetworkGraph => {
+        (graph.name, graph.graph)
+      }
+    }).foldLeft(Graph[Resource, WLkDiEdge]())((sum, ng) => {
+      val (label, g) = ng
+      val edges = g.edges.map(e => WLkDiEdge(e.from.value, e.to.value)(e.weight, label))
+      sum.++(edges)
+    })
+    sumGraph.toDot(root, edgeTransformer = simpleEdgeTransformer)
+  }
 
   def toDot(network: NetworkGraph, conf: DotConfig): String = {
     val root = DotRootGraph(directed = true, Option(network.name),

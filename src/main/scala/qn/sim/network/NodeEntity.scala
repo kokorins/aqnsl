@@ -27,39 +27,57 @@ case class NodeLogger(events: mutable.ArrayBuffer[NodeStateEvent]) extends NodeQ
   override def append(event: NodeStateEvent): Unit = events.append(event)
 }
 
-case class NodeEntity(id: String, distribution: ContinuousDistr[Double],
+trait Discipline {
+  def receive(state: NodeState, order: Order, now: Double): NodeStateEvent
+  def processed(state: NodeState, order: Order, now: Double): NodeStateEvent
+}
+
+trait Priority {
+  def highest(orders: Seq[Order]): Order
+}
+
+case object Fifo extends Priority {
+  override def highest(orders: Seq[Order]): Order = orders.head
+}
+
+case class NonPreemptive(priority: Priority = Fifo) extends Discipline {
+  def receive(state: NodeState, order: Order, now: Double): NodeStateEvent = {
+    if (state.processing.size < state.numSlots) {
+      NodeStateEvent(now, List(), Set(), List(order), Set())
+    } else {
+      NodeStateEvent(now, List(order), Set(), List(), Set())
+    }
+  }
+  def processed(state: NodeState, order: Order, now: Double): NodeStateEvent = {
+    val fromProcessing = Set(order)
+    val toQueue = List()
+    if (state.queue.nonEmpty) {
+      val toProcess = priority.highest(state.queue)
+      val fromQueue = Set(toProcess)
+      val toProcessing = List(toProcess)
+      NodeStateEvent(now, toQueue, fromQueue, toProcessing, fromProcessing)
+    } else {
+      NodeStateEvent(now, toQueue, Set(), List(), fromProcessing)
+    }
+  }
+}
+
+case class NodeEntity(id: String, distribution: ContinuousDistr[Double], discipline: Discipline = NonPreemptive(),
                       var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = EmptyNodeQuery)
   extends Entity {
   override def receive(scheduledEvent: ScheduledCommand): Seq[ScheduledCommand] = scheduledEvent match {
     case ScheduledCommand(EnterSimulatorCommand(order), sender, _, now) =>
-      if (state.processing.size < state.numSlots) {
-        val event = NodeStateEvent(now, List(), Set(), List(order), Set())
-        nodeQuery.append(event)
-        state = state.apply(event)
-        Seq(ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), this :: sender.toList,
+      val event = discipline.receive(state, order, now)
+      nodeQuery.append(event)
+      state = state.apply(event)
+      event.toProcessing.map(
+        ord => ScheduledCommand(ProcessedSimulatorCommand(ord), Option(this), this :: sender.toList,
           now + distribution.draw()))
-      } else {
-        val event = NodeStateEvent(now, List(order), Set(), List(), Set())
-        nodeQuery.append(event)
-        state = state.apply(event)
-        Seq()
-      }
     case ScheduledCommand(ProcessedSimulatorCommand(order), _, receivers, now) =>
-      val fromProcessing = Set(order)
-      val toQueue = List()
-      if (state.queue.nonEmpty) {
-        val fromQueue = Set(state.queue.head)
-        val toProcessing = List(state.queue.head)
-        val event = NodeStateEvent(now, toQueue, fromQueue, toProcessing, fromProcessing)
-        nodeQuery.append(event)
-        state = state.apply(event)
-        toProcessing.map(order => ScheduledCommand(ProcessedSimulatorCommand(order), Option(this), receivers,
-          now + distribution.draw()))
-      } else {
-        val event = NodeStateEvent(now, toQueue, Set(), List(), fromProcessing)
-        nodeQuery.append(event)
-        state = state.apply(event)
-        Seq()
-      }
+      val event = discipline.processed(state, order, now)
+      nodeQuery.append(event)
+      state = state.apply(event)
+      event.toProcessing.map(
+        ord => ScheduledCommand(ProcessedSimulatorCommand(ord), Option(this), receivers, now + distribution.draw()))
   }
 }

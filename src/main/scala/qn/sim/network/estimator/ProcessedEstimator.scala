@@ -1,16 +1,14 @@
 package qn.sim.network.estimator
 
 import qn.distribution.Singular
-import qn.monitor._
-import qn.sim.Estimator
 import qn.sim.network.{NetworkQuery, NetworkStateEvent}
 
 import scala.util.Try
 
-case class ProcessedEstimator(monitor: Monitor, var counter: Double) extends Estimator with NetworkQuery {
+case class ProcessedEstimator(name: String, var counter: Double) extends NetworkQuery {
 
-  override def estimate: Try[Estimation] = Try {
-    StatisticsEstimation(monitor, Singular(counter))
+  def estimate: Try[Singular] = Try {
+    Singular(counter)
   }
 
   override def append(event: NetworkStateEvent): Unit = {
@@ -19,5 +17,5 @@ case class ProcessedEstimator(monitor: Monitor, var counter: Double) extends Est
 }
 
 object ProcessedEstimator {
-  def apply(name: String): ProcessedEstimator = new ProcessedEstimator(NamedMonitor(name), 0.0)
+  def apply(name: String): ProcessedEstimator = new ProcessedEstimator(name, 0.0)
 }

@@ -1,9 +1,8 @@
 package qn.sim.network.estimator
 
 import breeze.stats.distributions.Moments
-import qn.monitor.{Estimation, Monitor, NamedMonitor, StatisticsEstimation}
+import qn.sim.Order
 import qn.sim.network.{NetworkQuery, NetworkStateEvent, NodeQuery, NodeStateEvent}
-import qn.sim.{Estimator, Order}
 
 import scala.collection.mutable
 import scala.util.Try
@@ -19,16 +18,15 @@ case class MeanVarMinMaxCountEstimator(mean: Double, v: Double, min: Double, max
   }
 }
 
-case class SojournMomentsEstimator(monitor: Monitor, var adder: MeanVarMinMaxCountEstimator,
-                                   ordersIn: mutable.Map[Order, Double])
-  extends Estimator with NetworkQuery with NodeQuery {
-  override def estimate: Try[Estimation] = Try {
-    StatisticsEstimation(monitor, new Moments[Double, Double] {
+case class SojournMomentsEstimator(name: String, var adder: MeanVarMinMaxCountEstimator,
+                                   ordersIn: mutable.Map[Order, Double]) extends NetworkQuery with NodeQuery {
+  def estimate: Try[Moments[Double, Double]] = Try {
+    new Moments[Double, Double] {
       override def mean: Double = adder.mean
       override def variance: Double = adder.v
       override def entropy: Double = ???
       override def mode: Double = adder.mean
-    })
+    }
   }
   override def append(event: NetworkStateEvent): Unit = {
     for (o <- event.networkOut) {
@@ -52,6 +50,6 @@ case class SojournMomentsEstimator(monitor: Monitor, var adder: MeanVarMinMaxCou
 }
 
 object SojournMomentsEstimator {
-  def apply(name: String): SojournMomentsEstimator = SojournMomentsEstimator(NamedMonitor(name),
+  def apply(name: String): SojournMomentsEstimator = SojournMomentsEstimator(name,
     MeanVarMinMaxCountEstimator(0, 0, 0, 0, 0), mutable.Map())
 }
