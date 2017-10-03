@@ -2,11 +2,11 @@ name := "mgm"
 
 version := "1.0"
 
-scalaVersion := "2.12.1"
+scalaVersion := "2.12.3"
 
 val breezeVersion = "0.13.1"
-
 val scalaGraphVersion = "1.11.5"
+val galileoVersion = "1.0-SNAPSHOT"
 
 libraryDependencies  ++= Seq(
   "org.scalanlp" %% "breeze" % breezeVersion,
@@ -19,7 +19,8 @@ libraryDependencies  ++= Seq(
   "org.scalacheck" %% "scalacheck" % "1.13.4" % "test",
   "com.google.guava" % "guava" % "20.0",
   "org.scala-graph" %% "graph-core" % scalaGraphVersion,
-  "org.scala-graph" %% "graph-dot" % scalaGraphVersion
+  "org.scala-graph" %% "graph-dot" % scalaGraphVersion,
+  "cascala" %%  "galileo" % galileoVersion
 )
 
 resolvers ++= Seq(

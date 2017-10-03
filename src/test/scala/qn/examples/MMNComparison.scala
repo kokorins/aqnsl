@@ -1,4 +1,4 @@
-package qn
+package qn.examples
 
 import breeze.plot._
 import breeze.stats.distributions.DiscreteDistr
@@ -10,6 +10,7 @@ import qn.sim.network.CombinedNodeQuery
 import qn.sim.network.estimator.{BacklogEstimator, SojournEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver.{DefaultQuerySet, ProductFormSolver, ProductFormSolverArgs}
+import qn.{Network, NetworkGraph, OrdersStream, Resource}
 
 import scala.util.Try
 
@@ -65,15 +66,10 @@ object MMNComparison {
     println(1 / netSojournDist.mean, sampledNetSojourn.mean)
   }
 
-  val Gray = "109, 109, 109"
-  val LightGray = "191, 191, 191"
-  val Orange = "255, 105, 0"
-  val LightOrange = "254, 166, 101"
-
-  private def calcAt(func: Expr, t: Double) = {
-    val env = new Environment(Option.empty)
-    env.set("t", Number(t))
-    func.visit().visit(Option(env)).eval().doubleValue
-  }
+//  private def calcAt(func: Expr, t: Double) = {
+//    val env = new Environment(Option.empty)
+//    env.set("t", Number(t))
+//    func.visit().visit(Option(env)).eval().doubleValue
+//  }
 
 }

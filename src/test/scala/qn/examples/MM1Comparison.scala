@@ -1,4 +1,4 @@
-package qn
+package qn.examples
 
 import breeze.plot._
 import breeze.stats.distributions.DiscreteDistr
@@ -10,6 +10,7 @@ import qn.sim.network.CombinedNodeQuery
 import qn.sim.network.estimator.{BacklogEstimator, SojournEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver.{DefaultQuerySet, ProductFormSolver, ProductFormSolverArgs}
+import qn.{Network, NetworkGraph, OrdersStream, Resource}
 
 import scala.util.Try
 

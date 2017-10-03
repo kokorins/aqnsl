@@ -2,9 +2,13 @@ package qn.chart
 
 import breeze.plot.{Plot, plot => draw}
 import org.jfree.chart.axis.NumberTickUnit
-import qn.MMNComparison.{Gray, Orange}
 
 object DrawPlot {
+  val Gray = "109, 109, 109"
+  val LightGray = "191, 191, 191"
+  val Orange = "255, 105, 0"
+  val LightOrange = "254, 166, 101"
+
   def ofSojournTime(plot: Plot, xs: Seq[Double], analyticY: Seq[Double], simulatedY: Seq[Double]) = {
     plot += draw(xs, analyticY, name = "Analytical", colorcode = Gray)
     plot += draw(xs, simulatedY, name = "Simulated", colorcode = Orange)

@@ -1,7 +1,8 @@
-package qn
+package qn.examples
 
 import qn.distribution.Distribution
 import qn.dot.{DotConfig, DotTransformer}
+import qn.{NetworkGraph, Resource}
 
 object NetworkRepresentation {
 

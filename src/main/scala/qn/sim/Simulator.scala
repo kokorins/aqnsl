@@ -16,9 +16,7 @@ trait Entity {
   def receive(event: ScheduledCommand): Seq[ScheduledCommand]
 }
 
-case class GeneratorEntity(receivers: List[Entity],
-                           distribution: ContinuousDistr[Double] /*, monitors: Map[Monitor, Estimator]*/)
-  extends Entity {
+case class GeneratorEntity(receivers: List[Entity], distribution: ContinuousDistr[Double]) extends Entity {
   private def generateNextOrder(time:Double): (Order, Double) = {
     (new Order(GeneratorEntity.nextId()) {}, distribution.draw() + time)
   }
@@ -106,11 +104,14 @@ object Simulator {
     val entities = network.generators.flatMap(orderStream => {
       orderStream.trajectory match {
         case ng: NetworkGraph =>
-          val nodeEntities = ng.services.map(pair => pair._1 ->
-            NodeEntity(pair._1.name, pair._2, state = NodeState(List(), pair._1.numUnits, List()),
-              nodeQuery = args.nodeQueries.getOrElse(pair._1, EmptyNodeQuery)))
+          val nodeEntities = ng.services.map(pair => {
+            val (res, distr) = pair
+            val state = NodeState(res.numUnits)
+            val discipline = NonPreemptive()
+            res -> NodeEntity(res.name, distr, discipline, state, args.nodeQueries.getOrElse(res, EmptyNodeQuery))
+          })
           val networkEntity = NetworkEntity
-            .fromGraph(ng, NetworkStructure(ImmutableBiMap(nodeEntities)), networkQuery = args.networkQuery)
+                              .fromGraph(ng, NetworkStructure(ImmutableBiMap(nodeEntities)),  args.networkQuery)
           val generatorEntity = GeneratorEntity(List(networkEntity), orderStream.distribution)
           List(networkEntity, generatorEntity) ++ nodeEntities.values
       }

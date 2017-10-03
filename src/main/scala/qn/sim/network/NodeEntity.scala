@@ -5,11 +5,11 @@ import qn.sim._
 
 import scala.collection.mutable
 
-case class NodeState(var queue: List[Order], numSlots: Int, var processing: List[Order]) {
+case class NodeState(numSlots: Int, var queue: List[Order] = List(), var processing: List[Order] = List()) {
   def apply(diff: NodeStateEvent): NodeState = {
     val locQueue = queue.filterNot(q => diff.fromQueue.contains(q)) ::: diff.toQueue
     val locProcessing = processing.filterNot(p => diff.fromProcessing.contains(p)) ::: diff.toProcessing
-    NodeState(locQueue, numSlots, locProcessing)
+    NodeState(numSlots, locQueue, locProcessing)
   }
 }
 
@@ -63,7 +63,7 @@ case class NonPreemptive(priority: Priority = Fifo) extends Discipline {
 }
 
 case class NodeEntity(id: String, distribution: ContinuousDistr[Double], discipline: Discipline = NonPreemptive(),
-                      var state: NodeState = NodeState(List(), 1, List()), nodeQuery: NodeQuery = EmptyNodeQuery)
+                      var state: NodeState = NodeState(1), nodeQuery: NodeQuery = EmptyNodeQuery)
   extends Entity {
   override def receive(scheduledEvent: ScheduledCommand): Seq[ScheduledCommand] = scheduledEvent match {
     case ScheduledCommand(EnterSimulatorCommand(order), sender, _, now) =>

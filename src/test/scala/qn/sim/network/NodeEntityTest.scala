@@ -34,7 +34,7 @@ class NodeEntityTest extends FunSuite with Matchers {
   }
 
   test("Should process node processed events") {
-    val nodeEntity = NodeEntity(nodeId, distribution = distr, state = NodeState(List(), 1, List(order)))
+    val nodeEntity = NodeEntity(nodeId, distribution = distr, state = NodeState(1, List(), List(order)))
     val send = nodeEntity.receive(ScheduledCommand(ProcessedSimulatorCommand(order), Option(nodeEntity), List(), 0.0))
     send should be(empty)
     nodeEntity.state.processing should be(empty)
@@ -42,7 +42,7 @@ class NodeEntityTest extends FunSuite with Matchers {
   }
 
   test("Should process node processed events with queue") {
-    val nodeEntity = NodeEntity(nodeId, distribution = distr, state = NodeState(List(order2), 1, List(order)))
+    val nodeEntity = NodeEntity(nodeId, distribution = distr, state = NodeState(1, List(order2), List(order)))
     val send = nodeEntity.receive(ScheduledCommand(ProcessedSimulatorCommand(order), Option(nodeEntity), List(), 0.0))
     send should have(size(1))
     nodeEntity.state.processing should contain(order2)

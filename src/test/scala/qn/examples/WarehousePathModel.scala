@@ -1,7 +1,12 @@
-package qn
+package qn.examples
 
 import qn.distribution.Distribution
 import qn.dot.{DotConfig, DotTransformer}
+import qn.sim.network.CombinedNetworkQuery
+import qn.sim.network.estimator.{SojournEstimator, SojournMomentsEstimator}
+import qn.sim.{Simulator, SimulatorArgs}
+import qn.{Network, NetworkGraph, OrdersStream, Resource}
+import breeze.stats._
 
 object WarehousePathModel {
 
@@ -11,23 +16,16 @@ object WarehousePathModel {
       override val showSource = true
     }))
 
-    //    val network = Network("Warehouse Model", generators = List(OrdersStream("", Distribution.exp(0.8),
-    // networkGraph)))
-    //      .add(slowPick).add(slowSort).add(slowPack).add(fastPick).add(fastPack)
+    val networkSojourn = SojournEstimator("Sojourn Time Sample")
+    val networkMomSojourn = SojournMomentsEstimator("Sojourn Time Sample")
+    val networkQuery = CombinedNetworkQuery(networkSojourn, networkMomSojourn)
 
-    //    val networkSojourn = SojournEstimator("Sojourn Time Sample")
-    //    val networkMomSojourn = SojournMomentsEstimator("Sojourn Time Sample")
-    //    val networkQuery = CombinedNetworkQuery(networkSojourn, networkMomSojourn)
-    //    val simulator = Simulator(network, SimulatorArgs(100, networkQuery))
-    //    val prodResults = new DefaultQuerySet()
-    //    ProductFormSolver(network, ProductFormSolverArgs(prodResults)).solve()
-    //    println(simulator.simulate())
-    //    println(
-    //      s"${networkSojourn.name} mean(var): ${mean(networkSojourn.sample)}(${variance(networkSojourn.sample)})")
-    //    println(
-    //      s"${networkMomSojourn.name} mean(var): ${networkMomSojourn.adder.mean}(${networkMomSojourn.adder.v})")
-    //    println(s"${fastPick.name} stationary distribution: ${prodResults.nodesStationary(fastPick)}")
-    //    println(s"Network sojourn mean: ${prodResults.networkSojourn.map(_.mean)}")
+    val simulator = Simulator(network, SimulatorArgs(100, networkQuery))
+
+    println(simulator.simulate())
+
+    println(s"${networkSojourn.name} mean(var): ${mean(networkSojourn.sample)}(${variance(networkSojourn.sample)})")
+    println(s"${networkMomSojourn.name} mean(var): ${networkMomSojourn.adder.mean}(${networkMomSojourn.adder.v})")
   }
 
 

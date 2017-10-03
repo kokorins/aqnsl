@@ -1,4 +1,4 @@
-package qn
+package qn.examples
 
 import breeze.stats._
 import qn.distribution.Distribution
@@ -7,6 +7,7 @@ import qn.sim.network.CombinedNetworkQuery
 import qn.sim.network.estimator.{SojournEstimator, SojournMomentsEstimator}
 import qn.sim.{Simulator, SimulatorArgs}
 import qn.solver._
+import qn.{Network, NetworkGraph, OrdersStream, Resource}
 
 object WarehouseModel {
 

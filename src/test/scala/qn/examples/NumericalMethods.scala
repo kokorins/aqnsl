@@ -1,4 +1,4 @@
-package qn
+package qn.examples
 
 import breeze.plot.{Figure, plot}
 import galileo.environment.Environment

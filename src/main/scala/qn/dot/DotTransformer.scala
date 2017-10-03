@@ -32,6 +32,9 @@ object DotTransformer {
   type NetworkRepr = Graph[Resource, WDiEdge]
   type NetworksRepr = Graph[Resource, WLkDiEdge]
   type QueueNetworkRepr = Graph[String, WDiEdge]
+
+  val colorSeq = Seq("#000000", "#952877", "#fe6a23", "#fea665", "#66ff00")
+
   def queueName(node: String) = s"${node}_queue"
   def serverName(node: String) = s"${node}_server"
   def clusterName(node: String) = s"cluster_${node.replace("_queue", "").replace("_server", "")}"
@@ -60,21 +63,21 @@ object DotTransformer {
           val weight = 1.0 * w.weight / Long.MaxValue
           val label = w.label
           val weightAttr = if (weight < 1) {
-            Seq(DotAttr("label", s"$weight  $label"), DotAttr("fillcolor", weight))
+            Seq(DotAttr("label", s"$weight"), DotAttr("color", s"'$label'"))
           } else {
-            Nil
+            Seq(DotAttr("color", s" $label "))
           }
           Some((root, DotEdgeStmt(source.name, target.name, Seq() ++ weightAttr)))
         }
       }
 
-    val sumGraph = network.generators.map(_.trajectory).map({
-      case graph: NetworkGraph => {
-        (graph.name, graph.graph)
+    val sumGraph = network.generators.map(_.trajectory).zip(colorSeq).map({
+      case (graph: NetworkGraph, color: String) => {
+        (graph.name, graph.graph, color)
       }
     }).foldLeft(Graph[Resource, WLkDiEdge]())((sum, ng) => {
-      val (label, g) = ng
-      val edges = g.edges.map(e => WLkDiEdge(e.from.value, e.to.value)(e.weight, label))
+      val (label, g, color) = ng
+      val edges = g.edges.map(e => WLkDiEdge(e.from.value, e.to.value)(e.weight, color))
       sum.++(edges)
     })
     sumGraph.toDot(root, edgeTransformer = simpleEdgeTransformer)
